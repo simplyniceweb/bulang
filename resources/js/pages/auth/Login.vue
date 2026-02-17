@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { reactive } from 'vue';
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
@@ -17,12 +18,18 @@ defineProps<{
     canResetPassword: boolean;
     canRegister: boolean;
 }>();
+
+const form = reactive({
+    username: '',
+    password: '',
+    remember: false,
+});
 </script>
 
 <template>
     <AuthBase
         title="Log in to your account"
-        description="Enter your email and password below to log in"
+        description="Enter your username and password below to log in"
     >
         <Head title="Log in" />
 
@@ -37,22 +44,24 @@ defineProps<{
             v-bind="store.form()"
             :reset-on-success="['password']"
             v-slot="{ errors, processing }"
+            :data="form"
             class="flex flex-col gap-6"
         >
             <div class="grid gap-6">
                 <div class="grid gap-2">
-                    <Label for="email">Email address</Label>
+                    <Label for="username">Username</Label>
                     <Input
-                        id="email"
-                        type="email"
-                        name="email"
+                        id="username"
+                        type="text"
+                        name="username"
                         required
                         autofocus
                         :tabindex="1"
-                        autocomplete="email"
-                        placeholder="email@example.com"
+                        autocomplete="username"
+                        placeholder="Username"
+                        v-model="form.username"
                     />
-                    <InputError :message="errors.email" />
+                    <InputError :message="errors.username" />
                 </div>
 
                 <div class="grid gap-2">
@@ -75,13 +84,14 @@ defineProps<{
                         :tabindex="2"
                         autocomplete="current-password"
                         placeholder="Password"
+                        v-model="form.password"
                     />
                     <InputError :message="errors.password" />
                 </div>
 
                 <div class="flex items-center justify-between">
                     <Label for="remember" class="flex items-center space-x-3">
-                        <Checkbox id="remember" name="remember" :tabindex="3" />
+                        <Checkbox id="remember" name="remember" :tabindex="3" v-model="form.remember" />
                         <span>Remember me</span>
                     </Label>
                 </div>
