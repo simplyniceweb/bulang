@@ -1,21 +1,26 @@
 <script setup lang="ts">
-import { usePage, Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { formatDateTime } from '@/helpers/format';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
+import type { Paginated } from '@/types/pagination';
 import { route } from 'ziggy-js';
+import Pagination from '../../../components/Pagination.vue';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Events',
-        href: route('admin.events.index'),
-    }
-];
+interface Event {
+    id: number
+    name: string
+    status: string
+    started_at: string | null
+    ended_at: string | null
+}
 
+const props = defineProps<{
+    events: Paginated<Event>
+}>()
 
-const page = usePage<{ events: any[] }>();
-const events = computed(() => page.props.events ?? []);
+const events = computed(() => props.events.data)
+const links = computed(() => props.events.links)
 
 const deleteEvent = (id: number) => {
   if (confirm('Are you sure you want to delete this event?')) {
@@ -30,7 +35,7 @@ const deleteEvent = (id: number) => {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <AppLayout>
         <Head title="Events" />
         <div
             class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
@@ -123,6 +128,10 @@ const deleteEvent = (id: number) => {
                     </tr>
                     </tbody>
                 </table>
+            </div>
+                
+            <div class="mt-2 ms-2 flex space-x-1">
+                <Pagination :links="links" />
             </div>
         </div>
     </AppLayout>

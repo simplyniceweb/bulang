@@ -1,21 +1,25 @@
 <script setup lang="ts">
-import { usePage, Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { formatLabel } from '@/helpers/format';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
+import type { Paginated } from '@/types/pagination';
 import { route } from 'ziggy-js';
+import Pagination from '../../../components/Pagination.vue';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Users',
-        href: route('admin.users.index'),
-    }
-];
+interface User {
+    id: number
+    name: string
+    username: string
+    role: string
+}
 
+const props = defineProps<{
+    users: Paginated<User>
+}>()
 
-const page = usePage<{ users: any[] }>();
-const users = computed(() => page.props.users ?? []);
+const users = computed(() => props.users.data)
+const links = computed(() => props.users.links)
 
 const deleteUser = (id: number) => {
   if (confirm('Are you sure you want to delete this user?')) {
@@ -30,7 +34,7 @@ const deleteUser = (id: number) => {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <AppLayout>
         <Head title="Users" />
         <div
             class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
@@ -111,6 +115,10 @@ const deleteUser = (id: number) => {
                     </tr>
                     </tbody>
                 </table>
+            </div>
+                
+            <div class="mt-4 ms-2 flex space-x-1">
+                <Pagination :links="links" />
             </div>
         </div>
     </AppLayout>

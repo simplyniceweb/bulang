@@ -14,12 +14,12 @@ test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'username' => $user->username,
         'password' => 'password',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('admin.dashboard', absolute: false));
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {

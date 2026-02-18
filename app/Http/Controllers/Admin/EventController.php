@@ -11,10 +11,10 @@ class EventController extends Controller
 {
     public function index()
     {
-        $events = Event::orderBy('id', 'desc')->get();
+        $events = Event::latest()->paginate(10)->withQueryString();
 
         return Inertia::render('Admin/Events/Index', [
-            'events' => fn () => $events,
+            'events' => $events,
         ]);
     }
 

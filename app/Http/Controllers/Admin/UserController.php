@@ -12,10 +12,10 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::orderBy('id', 'desc')->get();
+        $users = User::latest()->paginate(10)->withQueryString();
 
         return Inertia::render('Admin/Users/Index', [
-            'users' => fn () => $users,
+            'users' => $users,
         ]);
     }
 
