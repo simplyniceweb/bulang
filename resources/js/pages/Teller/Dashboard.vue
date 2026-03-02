@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import Echo from 'laravel-echo';
 import { CircleUserRound } from 'lucide-vue-next';
 import { ref, onMounted, onUnmounted } from 'vue';
 import Toast from '@/components/Toast.vue';
@@ -7,6 +8,48 @@ import { tellerClock } from '@/helpers/time';
 import { addToast } from '@/helpers/toast';
 import { logout } from '@/routes';
 import BetConfirm from './BetConfirm.vue';
+
+let echo = null;
+const currentRound = ref(null);
+const cancellationReason = ref(null);
+
+// Initialize Echo
+onMounted(() => {
+  echo = new Echo({
+    broadcaster: 'reverb',
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: import.meta.env.VITE_REVERB_HOST,
+    wsPort: import.meta.env.VITE_REVERB_PORT,
+    wssPort: import.meta.env.VITE_REVERB_PORT,
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+    enabledTransports: ['ws', 'wss'],
+  });
+
+  // Listen for round.opened event
+  echo.channel('rounds')
+    .listen('.round.opened', (event: any) => {
+      console.log('Round opened event received:', event);
+      currentRound.value = event.round;
+      cancellationReason.value = null;
+    })
+    .listen('.round.closed', (event: any) => {
+      console.log('Round closed:', event);
+      currentRound.value = event.round;
+      cancellationReason.value = null;
+    })
+    .listen('.round.cancelled', (event: any) => {
+      console.log('Round cancelled:', event);
+      currentRound.value = event.round;
+      cancellationReason.value = event.reason;
+    });
+});
+
+// Clean up Echo connection
+onUnmounted(() => {
+  if (echo) {
+    echo.leaveChannel('rounds');
+  }
+});
 
 // bet amount
 const betAmount = ref(0);
@@ -70,6 +113,14 @@ const handleLogout = () => {
 <template>
     <Toast />
     <Head title="Teller Dashboard" />
+
+    <div v-if="currentRound" class="mt-4 p-4 border rounded">
+      <h3 class="text-lg font-bold">Current Round #{{ currentRound.round_number }}</h3>
+      <p>Round ID: {{ currentRound.id }}</p>
+      <p>Status: {{ currentRound.status }}</p>
+      <p>Started: {{ currentRound.opened_at }}</p>
+    </div>
+
     <div class="h-[calc(100vh-80px)] p-4 bg-gray-100">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
 

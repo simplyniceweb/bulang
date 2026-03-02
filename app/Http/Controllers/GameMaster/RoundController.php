@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\GameMaster;
 
+use App\Events\RoundCancelled;
+use App\Events\RoundClosed;
+use App\Events\RoundOpened;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
@@ -31,9 +34,9 @@ class RoundController extends Controller
 
         $roundNumber = $lastRound ? $lastRound->round_number + 1 : 1;
 
-        DB::transaction(function () use ($event, $roundNumber) {
+        $newRound = DB::transaction(function () use ($event, $roundNumber) {
 
-            Round::create([
+            return Round::create([
                 'event_id' => $event->id,
                 'round_number' => $roundNumber,
                 'status' => 'open',
@@ -41,6 +44,8 @@ class RoundController extends Controller
             ]);
 
         });
+
+         broadcast(new RoundOpened($newRound));
 
         return back()->with([
             'success' => 'Round opened successfully.', 
@@ -115,6 +120,7 @@ class RoundController extends Controller
         ]);
 
         Cache::forget('active_event');
+        broadcast(new RoundCancelled($round, 'Cancelled by Game Master'));
 
         return back()->with([
             'success' => 'Round cancelled successfully.',
@@ -167,6 +173,8 @@ class RoundController extends Controller
             'betting_closed' => true,
             'closed_at' => now(),
         ]);
+        
+        broadcast(new RoundClosed($round));
 
         return back()->with([
             'success' => 'Global betting closed. You can now declare the winner.',
