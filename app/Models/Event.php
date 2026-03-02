@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 
 class Event extends Model
 {
@@ -38,5 +40,31 @@ class Event extends Model
     public function transactions()
     {
         return $this->hasMany(TellerTransaction::class);
+    }
+
+    public static function activeOrFail()
+    {
+        $events = self::where('status','active')->get();
+
+        if ($events->count() === 0) {
+            throw ValidationException::withMessages([
+                'event' => 'No active event found.'
+            ]);
+        }
+
+        if ($events->count() > 1) {
+            throw ValidationException::withMessages([
+                'event' => 'Multiple active events detected.'
+            ]);
+        }
+
+        return $events->first();
+    }
+
+    public static function cachedActive()
+    {
+        return Cache::remember('active_event', 60, function () {
+            return self::activeOrFail();
+        });
     }
 }

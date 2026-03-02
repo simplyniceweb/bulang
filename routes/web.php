@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\GameMaster\RoundController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -28,6 +29,17 @@ Route::middleware(['auth', 'verified', 'game_master'])
         Route::get('/', function () {
             return Inertia::render('GameMaster/Dashboard');
         })->name('dashboard');
+
+        Route::post('/round/open', [RoundController::class, 'open'])->name('round.open');
+
+        Route::post('/round/{round}/close-bet', [RoundController::class, 'closeBet'])
+            ->name('round.closeBet');
+
+        Route::post('/round/{round}/declare', [RoundController::class, 'declareWinner'])
+            ->name('round.declare');
+
+        Route::post('/round/{round}/cancel', [RoundController::class, 'cancel'])
+            ->name('round.cancel');
 });
 
 Route::middleware(['auth', 'verified', 'admin'])

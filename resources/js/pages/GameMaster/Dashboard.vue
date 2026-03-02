@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
 import { ref, reactive } from 'vue';
+import ErrorModal from '@/components/ErrorModal.vue'
+import { useErrorModal } from '@/composables/useErrorModal'
 import { formatCurrency, formatNumber } from '@/helpers/format';
 import { logout } from '@/routes';
+
+const {
+  showErrorModal,
+  errorMessage,
+  closeErrorModal
+} = useErrorModal()
 
 /* --- Current Round --- */
 const round = reactive({
@@ -36,20 +44,20 @@ const recentRounds = ref([
 /* --- Actions --- */
 function startRound(action: number) {
   if (action === 1) {
-    if (!confirm('Are you sure you want to open a new round?')) return;
-  } else if (action === 0) {
-    if (!confirm('Are you sure you want to cancel the current round?')) return;
+
+    if (!confirm('Open new round?')) return
+
+    router.post(route('game_master.round.open'))
+
   }
 
-  round.id++
-  round.status = 'open'
-  round.winner = null
-  round.totalWala = Math.ceil(Math.random() * 10000)
-  round.totalMeron = Math.ceil(Math.random() * 10000)
-  round.totalDraw = Math.ceil(Math.random() * 10000)
-  round.wala_closed = false
-  round.meron_closed = false
-  winner.value = ''
+  if (action === 0) {
+
+    if (!confirm('Cancel round?')) return
+
+    router.post(route('game_master.round.cancel', round.id))
+
+  }
 }
 
 function endRound(selectedWinner: 'wala' | 'meron' | 'draw') {
@@ -80,91 +88,91 @@ const handleLogout = () => {
   <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 h-screen items-start">
     
     <!-- LEFT PANEL: Round Controls -->
-<div class="lg:col-span-2 flex flex-col gap-6">
-      <div class="bg-white rounded-2xl shadow p-6 flex flex-col gap-6">
+    <div class="lg:col-span-2 flex flex-col gap-6">
+        <div class="bg-white rounded-2xl shadow p-6 flex flex-col gap-6">
         
         <div class="flex flex-col gap-4 border-b pb-6">
-          <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center">
             <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ round.id }}</h2>
             <p class="font-semibold">Status: 
-              <span :class="round.status==='open'?'text-green-600':'text-red-600'">{{ round.status.toUpperCase() }}</span>
+                <span :class="round.status==='open'?'text-green-600':'text-red-600'">{{ round.status.toUpperCase() }}</span>
             </p>
-          </div>
-          <button
+            </div>
+            <button
             @click="startRound(1)"
             class="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition shadow-lg"
-          >
+            >
             OPEN NEW ROUND
-          </button>
+            </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          <div class="flex flex-col gap-4 border-r pr-0 md:pr-8">
+            
+            <div class="flex flex-col gap-4 border-r pr-0 md:pr-8">
             <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Declare Result</h3>
             <div class="flex flex-col gap-3">
-              <button
+                <button
                 @click="endRound('wala')"
                 class="w-full py-3 rounded-lg text-white font-semibold transition bg-indigo-600 hover:bg-indigo-700"
-              >
+                >
                 WINNER WALA
-              </button>
+                </button>
 
-              <button
+                <button
                 @click="endRound('meron')"
                 class="w-full py-3 rounded-lg text-white font-semibold transition bg-red-600 hover:bg-red-700"
-              >
+                >
                 WINNER MERON
-              </button>
+                </button>
 
-              <button
+                <button
                 @click="endRound('draw')"
                 class="w-full py-3 rounded-lg text-white font-semibold transition bg-yellow-600 hover:bg-yellow-700"
-              >
+                >
                 WINNER DRAW
-              </button>
+                </button>
             </div>
 
             <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
-              <div class="text-indigo-600 text-sm">WALA<br><span class="text-lg">{{ formatNumber(round.totalWala) }}</span></div>
-              <div class="text-red-600 text-sm">MERON<br><span class="text-lg">{{ formatNumber(round.totalMeron) }}</span></div>
-              <div class="text-yellow-600 text-sm">DRAW<br><span class="text-lg">{{ formatNumber(round.totalDraw) }}</span></div>
+                <div class="text-indigo-600 text-sm">WALA<br><span class="text-lg">{{ formatNumber(round.totalWala) }}</span></div>
+                <div class="text-red-600 text-sm">MERON<br><span class="text-lg">{{ formatNumber(round.totalMeron) }}</span></div>
+                <div class="text-yellow-600 text-sm">DRAW<br><span class="text-lg">{{ formatNumber(round.totalDraw) }}</span></div>
             </div>
-          </div>
+            </div>
 
-          <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
             <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Betting Controls</h3>
             <div class="flex flex-col gap-3">
-              <button
+                <button
                 @click="closeBetting('wala')"
                 :disabled="round.wala_closed"
                 class="w-full py-3 rounded-lg text-white font-semibold transition"
                 :class="round.wala_closed ? 'bg-gray-300' : 'bg-indigo-600 hover:bg-indigo-700'"
-              >
+                >
                 CLOSE WALA
-              </button>
+                </button>
 
-              <button
+                <button
                 @click="closeBetting('meron')"
                 :disabled="round.meron_closed"
                 class="w-full py-3 rounded-lg text-white font-semibold transition"
                 :class="round.meron_closed ? 'bg-gray-300' : 'bg-red-600 hover:bg-red-700'"
-              >
-                CLOSE MERON
-              </button>
-
-              <div class="mt-auto pt-4">
-                <button
-                  @click="startRound(0)"
-                  class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg font-bold hover:bg-red-100 hover:text-red-600 transition"
                 >
-                  CANCEL CURRENT ROUND
+                CLOSE MERON
                 </button>
-              </div>
+
+                <div class="mt-auto pt-4">
+                <button
+                    @click="startRound(0)"
+                    class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg font-bold hover:bg-red-100 hover:text-red-600 transition"
+                >
+                    CANCEL CURRENT ROUND
+                </button>
+                </div>
             </div>
-          </div>
+            </div>
         </div>
-      </div>
+        </div>
     </div>
 
     <!-- RIGHT PANEL: Recent Rounds + Teller Totals -->
@@ -216,5 +224,10 @@ const handleLogout = () => {
       </div>
     </div>
 
+    <ErrorModal
+    :show="showErrorModal"
+    :message="errorMessage"
+    @close="closeErrorModal"
+    />
   </div>
 </template>

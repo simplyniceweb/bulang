@@ -52,14 +52,28 @@
         </button>
       </form>
     </div>
+
+    <ErrorModal
+    :show="showErrorModal"
+    :message="errorMessage"
+    @close="closeErrorModal"
+    />
   </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { Head } from '@inertiajs/vue3';
+import ErrorModal from '@/components/ErrorModal.vue'
+import { useErrorModal } from '@/composables/useErrorModal'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+
+const {
+  showErrorModal,
+  errorMessage,
+  closeErrorModal
+} = useErrorModal()
 
 const props = defineProps<{ event: any }>();
 

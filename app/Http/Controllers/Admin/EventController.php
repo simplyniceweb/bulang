@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Event;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class EventController extends Controller
@@ -44,7 +45,15 @@ class EventController extends Controller
         ];
 
         if ($request->status === 'active') {
-            $update['started_at'] = now();
+
+            if (Event::where('status','active')->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'Only one event can be active.'
+                ]);
+            } else {
+                $update['started_at'] = now();
+            }
+
         }
 
         Event::create($update);
@@ -70,6 +79,15 @@ class EventController extends Controller
             'house_percent' => $request->house_percent,
             'status' => $request->status,
         ];
+
+    
+        if ($request->status === 'active') {
+            if (Event::where('status','active')->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'Only one event can be active.'
+                ]);
+            }
+        }
 
         if ($event->status === 'active' && $request->status === 'closed') {
             $update['ended_at'] = now();
