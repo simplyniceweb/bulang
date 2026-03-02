@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { debounce } from 'lodash';
+import { computed, ref, watch } from 'vue';
 import { formatLabel } from '@/helpers/format';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { Paginated } from '@/types/pagination';
@@ -16,10 +17,29 @@ interface User {
 
 const props = defineProps<{
     users: Paginated<User>
+    filters?: {
+        search?: string
+    }
 }>()
 
 const users = computed(() => props.users.data)
 const links = computed(() => props.users.links)
+
+const search = ref(props.filters?.search || '')
+
+watch(
+  search,
+  debounce((value: string) => {
+    router.get(
+      route('admin.users.index'),
+      { search: value },
+      {
+        preserveState: true,
+        replace: true,
+      }
+    )
+  }, 300)
+)
 
 const deleteUser = (id: number) => {
   if (confirm('Are you sure you want to delete this user?')) {
@@ -39,6 +59,12 @@ const deleteUser = (id: number) => {
         <div
             class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
         >
+        <input
+            v-model="search"
+            type="text"
+            placeholder="Search users..."
+            class="p-3 border border-gray-400 border-rounded focus:outline-none focus:ring-2 focus:ring-gray-700 focus:border-transparent transition"
+        />
         <Link :href="route('admin.users.create')" class="self-end rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition">
             Create User
         </Link>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
 import { ref, reactive } from 'vue';
-import { formatCurrency } from '@/helpers/format';
+import { formatCurrency, formatNumber } from '@/helpers/format';
 import { logout } from '@/routes';
 
 /* --- Current Round --- */
@@ -9,9 +9,9 @@ const round = reactive({
   id: 0,
   status: 'open', // open | closed
   winner: null as 'wala' | 'meron' | 'draw' | null,
-  totalWala: 0,
-  totalMeron: 0,
-  totalDraw: 0,
+  totalWala: Math.ceil(Math.random() * 10000),
+  totalMeron: Math.ceil(Math.random() * 10000),
+  totalDraw: Math.ceil(Math.random() * 10000),
   wala_closed: false,
   meron_closed: false,
 })
@@ -21,26 +21,32 @@ const winner = ref<'wala' | 'meron' | 'draw' | ''>('')
 
 /* --- Mock Recent Rounds --- */
 const recentRounds = ref([
-  { id: 2, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 1, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 2, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 1, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 2, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 1, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 2, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 1, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
+  { id: 10, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
+  { id: 9, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
+  { id: 8, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
+  { id: 7, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
+  { id: 6, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
+  { id: 5, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
+  { id: 4, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
+  { id: 3, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
   { id: 2, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
   { id: 1, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
 ])
 
 /* --- Actions --- */
-function startRound() {
+function startRound(action: number) {
+  if (action === 1) {
+    if (!confirm('Are you sure you want to open a new round?')) return;
+  } else if (action === 0) {
+    if (!confirm('Are you sure you want to cancel the current round?')) return;
+  }
+
   round.id++
   round.status = 'open'
   round.winner = null
-  round.totalWala = 0
-  round.totalMeron = 0
-  round.totalDraw = 0
+  round.totalWala = Math.ceil(Math.random() * 10000)
+  round.totalMeron = Math.ceil(Math.random() * 10000)
+  round.totalDraw = Math.ceil(Math.random() * 10000)
   round.wala_closed = false
   round.meron_closed = false
   winner.value = ''
@@ -48,16 +54,15 @@ function startRound() {
 
 function endRound(selectedWinner: 'wala' | 'meron' | 'draw') {
   if (!selectedWinner) return alert('Please select winner')
+
+  if (!confirm(`Confirm ending round #${round.id} with winner: ${selectedWinner.toUpperCase()}?`)) return;
+
   round.status = 'closed'
   round.winner = selectedWinner
-  recentRounds.value.unshift({ 
-    id: round.id, 
-    winner: selectedWinner, 
-    totalWala: round.totalWala, 
-    totalMeron: round.totalMeron, 
-    totalDraw: round.totalDraw,
-    tellerTotals: [] // fetch actual teller totals from backend
-  })
+  const selectedRound = recentRounds.value[Math.floor(Math.random() * recentRounds.value.length)];
+  recentRounds.value.unshift(selectedRound) // Add random recent round to top of list for demo purposes
+
+  startRound(2) // Automatically start new round after ending current round
 }
 
 function closeBetting(side: 'wala' | 'meron') {
@@ -72,74 +77,98 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 h-screen">
+  <div class="p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 h-screen items-start">
     
     <!-- LEFT PANEL: Round Controls -->
-    <div class="lg:col-span-2 flex flex-col gap-6">
-      <div class="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
-        <div class="flex justify-between items-center">
-          <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ round.id }}</h2>
-          <p class="font-semibold">Status: 
-            <span :class="round.status==='open'?'text-green-600':'text-red-600'">{{ round.status.toUpperCase() }}</span>
-          </p>
-        </div>
-
-        <!-- Start Round -->
-        <button
-          @click="startRound"
-          class="bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition"
-        >
-          NEW ROUND
-        </button>
-
-        <!-- End Round -->
-        <div class="mt-4 flex flex-col gap-2">
-          <label class="font-semibold">End Round & Declare Winner</label>
-          <select v-model="winner" class="border rounded-lg py-2 px-3 w-full">
-            <option value="wala">Wala</option>
-            <option value="meron">Meron</option>
-            <option value="draw">Draw</option>
-          </select>
+<div class="lg:col-span-2 flex flex-col gap-6">
+      <div class="bg-white rounded-2xl shadow p-6 flex flex-col gap-6">
+        
+        <div class="flex flex-col gap-4 border-b pb-6">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ round.id }}</h2>
+            <p class="font-semibold">Status: 
+              <span :class="round.status==='open'?'text-green-600':'text-red-600'">{{ round.status.toUpperCase() }}</span>
+            </p>
+          </div>
           <button
-            @click="endRound(winner as 'wala' | 'meron' | 'draw')"
-            class="bg-indigo-600 text-white py-2 px-4 rounded-lg font-bold hover:bg-indigo-700 transition mt-2"
+            @click="startRound(1)"
+            class="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition shadow-lg"
           >
-            CONFIRM WINNER
+            OPEN NEW ROUND
           </button>
         </div>
 
-        <!-- Close Betting -->
-        <div class="mt-4 flex gap-3">
-          <button
-            @click="closeBetting('wala')"
-            :disabled="round.wala_closed"
-            class="flex-1 py-2 rounded-lg text-white font-semibold"
-            :class="round.wala_closed ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
-          >
-            CLOSE WALA
-          </button>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          
+          <div class="flex flex-col gap-4 border-r pr-0 md:pr-8">
+            <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Declare Result</h3>
+            <div class="flex flex-col gap-3">
+              <button
+                @click="endRound('wala')"
+                class="w-full py-3 rounded-lg text-white font-semibold transition bg-indigo-600 hover:bg-indigo-700"
+              >
+                WINNER WALA
+              </button>
 
-          <button
-            @click="closeBetting('meron')"
-            :disabled="round.meron_closed"
-            class="flex-1 py-2 rounded-lg text-white font-semibold"
-            :class="round.meron_closed ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'"
-          >
-            CLOSE MERON
-          </button>
-        </div>
+              <button
+                @click="endRound('meron')"
+                class="w-full py-3 rounded-lg text-white font-semibold transition bg-red-600 hover:bg-red-700"
+              >
+                WINNER MERON
+              </button>
 
-        <!-- Totals -->
-        <div class="mt-4 border-t pt-3 grid grid-cols-3 text-center font-bold">
-          <div class="text-green-600">WALA: {{ round.totalWala }}</div>
-          <div class="text-red-600">MERON: {{ round.totalMeron }}</div>
-          <div class="text-yellow-500">DRAW: {{ round.totalDraw }}</div>
+              <button
+                @click="endRound('draw')"
+                class="w-full py-3 rounded-lg text-white font-semibold transition bg-yellow-600 hover:bg-yellow-700"
+              >
+                WINNER DRAW
+              </button>
+            </div>
+
+            <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
+              <div class="text-indigo-600 text-sm">WALA<br><span class="text-lg">{{ formatNumber(round.totalWala) }}</span></div>
+              <div class="text-red-600 text-sm">MERON<br><span class="text-lg">{{ formatNumber(round.totalMeron) }}</span></div>
+              <div class="text-yellow-600 text-sm">DRAW<br><span class="text-lg">{{ formatNumber(round.totalDraw) }}</span></div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Betting Controls</h3>
+            <div class="flex flex-col gap-3">
+              <button
+                @click="closeBetting('wala')"
+                :disabled="round.wala_closed"
+                class="w-full py-3 rounded-lg text-white font-semibold transition"
+                :class="round.wala_closed ? 'bg-gray-300' : 'bg-indigo-600 hover:bg-indigo-700'"
+              >
+                CLOSE WALA
+              </button>
+
+              <button
+                @click="closeBetting('meron')"
+                :disabled="round.meron_closed"
+                class="w-full py-3 rounded-lg text-white font-semibold transition"
+                :class="round.meron_closed ? 'bg-gray-300' : 'bg-red-600 hover:bg-red-700'"
+              >
+                CLOSE MERON
+              </button>
+
+              <div class="mt-auto pt-4">
+                <button
+                  @click="startRound(0)"
+                  class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg font-bold hover:bg-red-100 hover:text-red-600 transition"
+                >
+                  CANCEL CURRENT ROUND
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- RIGHT PANEL: Recent Rounds + Teller Totals -->
-    <div class="bg-white rounded-2xl shadow p-6 flex flex-col h-full max-h-1/4">
+    <div class="bg-white rounded-2xl shadow p-6 flex flex-col max-h-[calc(100vh-2rem)] sticky top-4">
 
         <!-- Profile -->
         <div class="flex justify-between items-center border-b pb-3">
@@ -163,11 +192,11 @@ const handleLogout = () => {
         <div v-for="r in recentRounds" :key="r.id" class="border rounded-lg p-3 hover:bg-gray-50">
           <div class="flex justify-between items-center mb-2">
             <span class="font-bold">Round #{{ r.id }}</span>
-            <span :class="{'text-green-600': r.winner==='wala','text-red-600': r.winner==='meron','text-yellow-500': r.winner==='draw'}" class="font-bold">{{ r.winner?.toUpperCase() }}</span>
+            <span :class="{'text-indigo-600': r.winner==='wala','text-red-600': r.winner==='meron','text-yellow-500': r.winner==='draw'}" class="font-bold">{{ r.winner?.toUpperCase() }}</span>
           </div>
 
           <div class="grid grid-cols-3 text-center font-semibold border-t pt-1">
-            <div class="text-green-600">WALA: {{ formatCurrency(r.totalWala) }}</div>
+            <div class="text-indigo-600">WALA: {{ formatCurrency(r.totalWala) }}</div>
             <div class="text-red-600">MERON: {{ formatCurrency(r.totalMeron) }}</div>
             <div class="text-yellow-500">DRAW: {{ formatCurrency(r.totalDraw) }}</div>
           </div>
@@ -177,7 +206,7 @@ const handleLogout = () => {
             <div v-for="t in r.tellerTotals" :key="t.name" class="flex justify-between px-2">
               <span>{{ t.name }}</span>
               <span class="flex gap-3">
-                <span class="text-green-600 border-e pr-2">{{ formatCurrency(t.wala) }}</span>
+                <span class="text-indigo-600 border-e pr-2">{{ formatCurrency(t.wala) }}</span>
                 <span class="text-red-600 border-e pr-2">{{ formatCurrency(t.meron) }}</span>
                 <span class="text-yellow-500 border-e pr-2">{{ formatCurrency(t.draw) }}</span>
               </span>

@@ -20,3 +20,7 @@ export function formatDateTime(dateTime: string): string {
 export function formatCurrency(value: number): string {
   return value.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })
 }
+
+export function formatNumber(value: number): string {
+  return new Intl.NumberFormat().format(value)
+}
