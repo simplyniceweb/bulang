@@ -9,12 +9,18 @@ use Inertia\Inertia;
 
 class EventController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $events = Event::latest()->paginate(10)->withQueryString();
+        $events = Event::query()
+            ->when($request->search, function ($query, $search) {
+                $query->where('name', 'like', "%{$search}%");
+            })
+            ->paginate(10)
+            ->withQueryString();
 
         return Inertia::render('Admin/Events/Index', [
             'events' => $events,
+            'filters' => $request->only('search'),
         ]);
     }
 
