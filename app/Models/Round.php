@@ -21,6 +21,7 @@ class Round extends Model
         'meron_closed',
         'wala_closed',
         'draw_closed',
+        'betting_closed',
         'opened_at',
         'closed_at',
         'cancelled_at',
@@ -33,6 +34,7 @@ class Round extends Model
         'meron_closed' => 'boolean',
         'wala_closed' => 'boolean',
         'draw_closed' => 'boolean',
+        'betting_closed' => 'boolean',
     ];
 
     public function event()

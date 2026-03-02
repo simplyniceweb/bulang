@@ -26,6 +26,7 @@ return new class extends Migration
             $table->boolean('meron_closed')->default(false);
             $table->boolean('wala_closed')->default(false);
             $table->boolean('draw_closed')->default(false);
+            $table->boolean('betting_closed')->default(false);
 
             $table->dateTime('opened_at');
             $table->dateTime('closed_at')->nullable();

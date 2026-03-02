@@ -2,6 +2,8 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { debounce } from 'lodash';
 import { computed, ref, watch } from 'vue';
+import AlertModal from '@/components/AlertModal.vue'
+import { useFlashAlert } from '@/composables/useFlashAlert'
 import { formatDateTime } from '@/helpers/format';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { Paginated } from '@/types/pagination';
@@ -15,6 +17,13 @@ interface Event {
     started_at: string | null
     ended_at: string | null
 }
+
+const {
+  show,
+  message,
+  type,
+  close
+} = useFlashAlert()
 
 const props = defineProps<{
     events: Paginated<Event>
@@ -160,5 +169,12 @@ const deleteEvent = (id: number) => {
                 <Pagination :links="links" />
             </div>
         </div>
+
+        <AlertModal
+            :show="show"
+            :message="message"
+            :type="type"
+            @close="close"
+        />
     </AppLayout>
 </template>

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\GameMaster\DashboardController as GameMasterDashboardController;
 use App\Http\Controllers\GameMaster\RoundController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,9 +27,8 @@ Route::middleware(['auth', 'verified', 'game_master'])
     ->prefix('game-master')
     ->name('game_master.')
     ->group(function () {
-        Route::get('/', function () {
-            return Inertia::render('GameMaster/Dashboard');
-        })->name('dashboard');
+        Route::get('/', [GameMasterDashboardController::class, 'index'])
+            ->name('dashboard');
 
         Route::post('/round/open', [RoundController::class, 'open'])->name('round.open');
 
@@ -40,6 +40,12 @@ Route::middleware(['auth', 'verified', 'game_master'])
 
         Route::post('/round/{round}/cancel', [RoundController::class, 'cancel'])
             ->name('round.cancel');
+
+        Route::post('/round/{round}/close-side', [RoundController::class, 'closeSide'])
+        ->name('round.closeSide');
+
+        Route::post('/round/{round}/close-global-betting', [RoundController::class, 'closeGlobalBetting'])
+        ->name('round.closeGlobalBetting');
 });
 
 Route::middleware(['auth', 'verified', 'admin'])

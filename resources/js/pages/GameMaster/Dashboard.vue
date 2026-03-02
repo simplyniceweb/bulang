@@ -1,31 +1,36 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { ref, reactive } from 'vue';
-import ErrorModal from '@/components/ErrorModal.vue'
-import { useErrorModal } from '@/composables/useErrorModal'
+import { CircleUserRound } from 'lucide-vue-next';
+import { ref } from 'vue';
+import AlertModal from '@/components/AlertModal.vue'
+import ConfirmModal from '@/components/ConfirmModal.vue'
+import StaticAlertModal from '@/components/StaticAlertModal.vue'
+import { useAlert } from '@/composables/useAlert'
+import { useFlashAlert } from '@/composables/useFlashAlert'
 import { formatCurrency, formatNumber } from '@/helpers/format';
 import { logout } from '@/routes';
 
+const confirmModal = ref(false)
+const confirmMessage = ref('')
+const confirmAction = ref<() => void>(() => {})
+const confirmType = ref('default')
+
+const { showAlert } = useAlert()
+
 const {
-  showErrorModal,
-  errorMessage,
-  closeErrorModal
-} = useErrorModal()
+  show,
+  message,
+  type,
+  close
+} = useFlashAlert()
 
-/* --- Current Round --- */
-const round = reactive({
-  id: 0,
-  status: 'open', // open | closed
-  winner: null as 'wala' | 'meron' | 'draw' | null,
-  totalWala: Math.ceil(Math.random() * 10000),
-  totalMeron: Math.ceil(Math.random() * 10000),
-  totalDraw: Math.ceil(Math.random() * 10000),
-  wala_closed: false,
-  meron_closed: false,
-})
-
-/* --- Winner selection --- */
-const winner = ref<'wala' | 'meron' | 'draw' | ''>('')
+const props = defineProps<{
+    event: any
+    round: any,
+    round_id: number | null,
+    round_number: number | null,
+    round_status: string | null,
+}>()
 
 /* --- Mock Recent Rounds --- */
 const recentRounds = ref([
@@ -42,41 +47,84 @@ const recentRounds = ref([
 ])
 
 /* --- Actions --- */
-function startRound(action: number) {
-  if (action === 1) {
+function startRound() {
+    confirmMessage.value = 'Open a new round?'
 
-    if (!confirm('Open new round?')) return
+    confirmAction.value = () => {
+        router.post(route('game_master.round.open'))
+    }
 
-    router.post(route('game_master.round.open'))
-
-  }
-
-  if (action === 0) {
-
-    if (!confirm('Cancel round?')) return
-
-    router.post(route('game_master.round.cancel', round.id))
-
-  }
+    confirmModal.value = true
+    confirmType.value = 'success'
 }
 
-function endRound(selectedWinner: 'wala' | 'meron' | 'draw') {
-  if (!selectedWinner) return alert('Please select winner')
+function cancelRound() {
+    if (!props.round_id) {
+        showAlert('No active round to cancel.')
+        return
+    }
 
-  if (!confirm(`Confirm ending round #${round.id} with winner: ${selectedWinner.toUpperCase()}?`)) return;
+    confirmMessage.value = 'Cancel current round? This will invalidate all bets placed for this round.'
 
-  round.status = 'closed'
-  round.winner = selectedWinner
-  const selectedRound = recentRounds.value[Math.floor(Math.random() * recentRounds.value.length)];
-  recentRounds.value.unshift(selectedRound) // Add random recent round to top of list for demo purposes
+    confirmAction.value = () => {
+        router.post(route('game_master.round.cancel', props.round_id))
+    }
 
-  startRound(2) // Automatically start new round after ending current round
+    confirmModal.value = true
 }
 
-function closeBetting(side: 'wala' | 'meron') {
-  if (side === 'wala' && round.totalWala <= round.totalMeron) return alert('Cannot close WALA: not higher stake')
-  if (side === 'meron' && round.totalMeron <= round.totalWala) return alert('Cannot close MERON: not higher stake')
-  round[`${side}_closed`] = true
+function closeSide(side: 'wala' | 'meron' | 'draw', isClosed: boolean | undefined) {
+    if (!props.round_id) {
+        showAlert('No active round to close betting for.')
+        return
+    }
+
+    confirmModal.value = true
+    confirmType.value = side
+
+    if (isClosed) {
+        confirmMessage.value = `${side.toUpperCase()} betting is already closed. Do you want to reopen it?`
+    } else {
+        confirmMessage.value = `Are you sure you want to close ${side.toUpperCase()} betting?`
+    }
+
+    confirmAction.value = () => {
+        router.post(route('game_master.round.closeSide', props.round_id), { side, reopen: isClosed })
+    }
+}
+
+function closeGlobalBetting() {
+  if (!props.round_id) {
+    showAlert('No active round to close global betting for.')
+    return
+  }
+    confirmMessage.value = 'Are you sure you want to close all betting? This will prevent any further bets from being placed.'
+
+    confirmAction.value = () => {
+        router.post(route('game_master.round.closeGlobalBetting', props.round_id))
+    }
+
+    confirmModal.value = true
+    confirmType.value = 'danger'
+}
+
+function confirmWinner(side: 'wala' | 'meron' | 'draw') {
+    if (!props.round_id) {
+        showAlert('No active round to declare winner.')
+        return
+    }
+
+    confirmMessage.value = `Declare winner: ${side.toUpperCase()}?`
+
+    confirmAction.value = () => {
+        router.post(route('game_master.round.declare', props.round_id), {
+            winner: side
+        })
+    }
+
+    confirmModal.value = true
+    confirmType.value = side
+
 }
 
 const handleLogout = () => {
@@ -92,14 +140,15 @@ const handleLogout = () => {
         <div class="bg-white rounded-2xl shadow p-6 flex flex-col gap-6">
         
         <div class="flex flex-col gap-4 border-b pb-6">
+            <h1 class="text-4xl font-bold text-black">{{ props.event.name ?? 'Test Event' }}</h1>
             <div class="flex justify-between items-center">
-            <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ round.id }}</h2>
+            <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ props.round_number ?? 0 }}</h2>
             <p class="font-semibold">Status: 
-                <span :class="round.status==='open'?'text-green-600':'text-red-600'">{{ round.status.toUpperCase() }}</span>
+                <span :class="props.round_status==='open'?'text-green-600':'text-red-600'">{{ props.round_status?.toUpperCase() }}</span>
             </p>
             </div>
             <button
-            @click="startRound(1)"
+            @click="startRound"
             class="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition shadow-lg"
             >
             OPEN NEW ROUND
@@ -112,21 +161,21 @@ const handleLogout = () => {
             <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Declare Result</h3>
             <div class="flex flex-col gap-3">
                 <button
-                @click="endRound('wala')"
+                @click="confirmWinner('wala')"
                 class="w-full py-3 rounded-lg text-white font-semibold transition bg-indigo-600 hover:bg-indigo-700"
                 >
                 WINNER WALA
                 </button>
 
                 <button
-                @click="endRound('meron')"
+                @click="confirmWinner('meron')"
                 class="w-full py-3 rounded-lg text-white font-semibold transition bg-red-600 hover:bg-red-700"
                 >
                 WINNER MERON
                 </button>
 
                 <button
-                @click="endRound('draw')"
+                @click="confirmWinner('draw')"
                 class="w-full py-3 rounded-lg text-white font-semibold transition bg-yellow-600 hover:bg-yellow-700"
                 >
                 WINNER DRAW
@@ -134,9 +183,9 @@ const handleLogout = () => {
             </div>
 
             <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
-                <div class="text-indigo-600 text-sm">WALA<br><span class="text-lg">{{ formatNumber(round.totalWala) }}</span></div>
-                <div class="text-red-600 text-sm">MERON<br><span class="text-lg">{{ formatNumber(round.totalMeron) }}</span></div>
-                <div class="text-yellow-600 text-sm">DRAW<br><span class="text-lg">{{ formatNumber(round.totalDraw) }}</span></div>
+                <div class="text-indigo-600 text-sm">WALA<br><span class="text-lg">{{ formatNumber(124512) }}</span></div>
+                <div class="text-red-600 text-sm">MERON<br><span class="text-lg">{{ formatNumber(23512) }}</span></div>
+                <div class="text-yellow-600 text-sm">DRAW<br><span class="text-lg">{{ formatNumber(8612) }}</span></div>
             </div>
             </div>
 
@@ -144,26 +193,38 @@ const handleLogout = () => {
             <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Betting Controls</h3>
             <div class="flex flex-col gap-3">
                 <button
-                @click="closeBetting('wala')"
-                :disabled="round.wala_closed"
-                class="w-full py-3 rounded-lg text-white font-semibold transition"
-                :class="round.wala_closed ? 'bg-gray-300' : 'bg-indigo-600 hover:bg-indigo-700'"
+                @click="closeSide('wala', props.round?.wala_closed)"
+                class="w-full py-3 rounded-lg font-semibold transition"
+                :class="props.round?.wala_closed ? 'bg-indigo-300 text-black' : 'bg-indigo-600 hover:bg-indigo-700 text-white'"
                 >
-                CLOSE WALA
+                {{ props.round?.wala_closed ? 'REOPEN WALA' : 'CLOSE WALA' }}
                 </button>
 
                 <button
-                @click="closeBetting('meron')"
-                :disabled="round.meron_closed"
-                class="w-full py-3 rounded-lg text-white font-semibold transition"
-                :class="round.meron_closed ? 'bg-gray-300' : 'bg-red-600 hover:bg-red-700'"
+                @click="closeSide('meron', props.round?.meron_closed)"
+                class="w-full py-3 rounded-lg font-semibold transition"
+                :class="props.round?.meron_closed ? 'bg-red-300 text-black' : 'bg-red-600 hover:bg-red-700 text-white'"
                 >
-                CLOSE MERON
+                {{ props.round?.meron_closed ? 'REOPEN MERON' : 'CLOSE MERON' }}
+                </button>
+
+                <button
+                @click="closeSide('draw', props.round?.draw_closed)"
+                class="w-full py-3 rounded-lg font-semibold transition"
+                :class="props.round?.draw_closed ? 'bg-yellow-300 text-black' : 'bg-yellow-600 hover:bg-yellow-700 text-white'"
+                >
+                {{ props.round?.draw_closed ? 'REOPEN DRAW' : 'CLOSE DRAW' }}
                 </button>
 
                 <div class="mt-auto pt-4">
                 <button
-                    @click="startRound(0)"
+                @click="closeGlobalBetting()"
+                class="mb-3 w-full bg-gray-200 text-gray-600 py-2 rounded-lg font-bold hover:bg-red-100 hover:text-red-600 transition"
+                >
+                CLOSE GLOBAL BETTING
+                </button>
+                <button
+                    @click="cancelRound"
                     class="w-full bg-gray-200 text-gray-600 py-2 rounded-lg font-bold hover:bg-red-100 hover:text-red-600 transition"
                 >
                     CANCEL CURRENT ROUND
@@ -224,10 +285,25 @@ const handleLogout = () => {
       </div>
     </div>
 
-    <ErrorModal
-    :show="showErrorModal"
-    :message="errorMessage"
-    @close="closeErrorModal"
+    <AlertModal
+        :show="show"
+        :message="message"
+        :type="type"
+        @close="close"
     />
+
+    <StaticAlertModal />
+
+    <ConfirmModal
+        :show="confirmModal"
+        title="Confirm Action"
+        :message="confirmMessage"
+        confirmText="Confirm"
+        cancelText="Cancel"
+        @confirm="() => { confirmAction(); confirmModal = false }"
+        @cancel="confirmModal = false"
+        :colorType="confirmType"
+    />
+
   </div>
 </template>

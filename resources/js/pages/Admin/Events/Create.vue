@@ -52,10 +52,11 @@
       </form>
     </div>
 
-    <ErrorModal
-    :show="showErrorModal"
-    :message="errorMessage"
-    @close="closeErrorModal"
+    <AlertModal
+        :show="show"
+        :message="message"
+        :type="type"
+        @close="close"
     />
   </AppLayout>
 </template>
@@ -63,16 +64,17 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { Head } from '@inertiajs/vue3';
-import ErrorModal from '@/components/ErrorModal.vue'
-import { useErrorModal } from '@/composables/useErrorModal'
+import AlertModal from '@/components/AlertModal.vue'
+import { useFlashAlert } from '@/composables/useFlashAlert'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 
 const {
-  showErrorModal,
-  errorMessage,
-  closeErrorModal
-} = useErrorModal()
+  show,
+  message,
+  type,
+  close
+} = useFlashAlert()
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Events', href: route('admin.events.index') },
