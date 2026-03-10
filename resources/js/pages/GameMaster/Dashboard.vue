@@ -1,181 +1,142 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { CircleUserRound } from 'lucide-vue-next';
-import { ref } from 'vue';
-import AlertModal from '@/components/AlertModal.vue'
-import ConfirmModal from '@/components/ConfirmModal.vue'
-import StaticAlertModal from '@/components/StaticAlertModal.vue'
-import Toast from '@/components/Toast.vue'
-import { useAlert } from '@/composables/useAlert'
-import { useFlashAlert } from '@/composables/useFlashAlert'
-import { formatNumber } from '@/helpers/format';
-import { addToast } from '@/helpers/toast';
+    import { router } from '@inertiajs/vue3';
+    import { CircleUserRound } from 'lucide-vue-next';
+    import { ref } from 'vue';
+    import AlertModal from '@/components/AlertModal.vue'
+    import ConfirmModal from '@/components/ConfirmModal.vue'
+    import StaticAlertModal from '@/components/StaticAlertModal.vue'
+    import Toast from '@/components/Toast.vue'
+    import { useAlert } from '@/composables/useAlert'
+    import { useFlashAlert } from '@/composables/useFlashAlert'
+    import { formatNumber } from '@/helpers/format';
+    import { addToast } from '@/helpers/toast';
+    import { route } from 'ziggy-js';
 
-const confirmModal = ref(false)
-const confirmMessage = ref('')
-const confirmAction = ref<() => void>(() => {})
-const confirmType = ref('default')
+    const confirmModal = ref(false)
+    const confirmMessage = ref('')
+    const confirmAction = ref<() => void>(() => {})
+    const confirmType = ref('default')
 
-const { showAlert } = useAlert()
+    const { showAlert } = useAlert()
 
-const {
-  show,
-  message,
-  type,
-  close
-} = useFlashAlert()
+    const {
+    show,
+    message,
+    type,
+    close
+    } = useFlashAlert()
 
-const props = defineProps<{
-    event: any
-    round: any,
-    rounds: any[],
-    round_id: number | null,
-    round_number: number | null,
-    round_status: string | null,
-}>()
+    const props = defineProps<{
+        event: any
+        round: any,
+        rounds: any[],
+    }>()
 
-/* --- Actions --- */
-function startRound() {
-    confirmMessage.value = 'Open a new round?'
-
-    confirmAction.value = () => {
-        router.post(
-            route('game_master.round.open'),
-            { noModal: true },
-            {
-                onSuccess: (page) => {
-                    console.log(page.props.flash?.success);
-                    addToast(page.props.flash?.success as string, 'success');
-                }
-            }
-        )
-    }
-
-    confirmModal.value = true
-    confirmType.value = 'success'
-}
-
-function cancelRound() {
-    if (!props.round_id) {
-        showAlert('No active round to cancel.')
-        return
-    }
-
-    confirmMessage.value = 'Cancel current round? This will invalidate all bets placed for this round.'
-
-    confirmAction.value = () => {
-        router.post(
-            route('game_master.round.cancel', props.round_id),
-            { noModal: true },
-            {
-                onSuccess: (page) => {
-                    console.log(page.props.flash?.success);
-                    addToast(page.props.flash?.success as string, 'success');
-                }
-            }
-        )
-    }
-
-    confirmModal.value = true
-}
-
-function closeSide(side: 'wala' | 'meron' | 'draw', isClosed: boolean | undefined) {
-    if (!props.round_id) {
-        showAlert('No active round to close betting for.')
-        return
-    }
-
-    confirmModal.value = true
-    confirmType.value = side
-
-    if (isClosed) {
-        confirmMessage.value = `${side.toUpperCase()} betting is already closed. Do you want to reopen it?`
-    } else {
-        confirmMessage.value = `Are you sure you want to close ${side.toUpperCase()} betting?`
-    }
-
-    confirmAction.value = () => {
-        router.post(
-            route('game_master.round.closeSide', props.round_id),
-            { side, reopen: isClosed, noModal: true },
-            {
-                onSuccess: (page) => {
-                    console.log(page.props.flash?.success);
-                    addToast(page.props.flash?.success as string, isClosed ? 'success' : 'error');
-                }
-            }
-        )
-    }
-}
-
-function closeGlobalBetting() {
-  if (!props.round_id) {
-    showAlert('No active round to close global betting for.')
-    return
-  }
-    confirmMessage.value = 'Are you sure you want to close all betting? This will prevent any further bets from being placed.'
-
-    confirmAction.value = () => {
-        router.post(
-            route('game_master.round.closeGlobalBetting', props.round_id),
-            { noModal: true },
-            {
-                onSuccess: (page) => {
-                    console.log(page.props.flash?.success);
-                    addToast(page.props.flash?.success as string, 'success');
-                }
-            })
-    }
-
-    confirmModal.value = true
-    confirmType.value = 'danger'
-}
-
-function confirmWinner(side: 'wala' | 'meron' | 'draw') {
-    if (!props.round_id) {
-        showAlert('No active round to declare winner.')
-        return
-    }
-
-    confirmMessage.value = `Declare winner: ${side.toUpperCase()}?`
-
-    confirmAction.value = () => {
-        router.post(
-            route('game_master.round.declare', props.round_id),
-            { winner: side, noModal: true },
-            {
-                onSuccess: (page) => {
-                    console.log(page.props.flash?.success);
-                    addToast(page.props.flash?.success as string, 'success');
-                }
-            }
-        )
-    }
-
-    confirmModal.value = true
-    confirmType.value = side
-
-}
-
-const askLogout = () => {
-    confirmMessage.value = 'You will be logged out of the system. Continue?'
-    confirmType.value = 'danger'
-
-    confirmAction.value = () => {
-        router.post(
-            route('logout'), 
+    function startRound() {
+        confirmAndPost(
+            'Open a new round?',
+            'game_master.round.open',
             {},
-            {
+            'success',
+            'success'
+        )
+    }
+
+    function cancelRound() {
+        if (!requireRound()) return;
+
+        confirmAndPost(
+            'Cancel current round? This will invalidate all bets placed.',
+            'game_master.round.cancel'
+        )
+    }
+
+    function closeSide(side: 'wala' | 'meron' | 'draw', isClosed?: boolean) {
+        if (!requireRound()) return
+
+        confirmAndPost(
+            isClosed
+                ? `${side.toUpperCase()} betting is already closed. Reopen it?`
+                : `Close ${side.toUpperCase()} betting?`,
+            'game_master.round.closeSide',
+            { side, reopen: isClosed },
+            isClosed ? 'success' : 'error',
+            side
+        )
+    }
+
+    function closeGlobalBetting() {
+        if (!requireRound()) return
+
+        confirmAndPost(
+            'Close ALL betting? No further bets will be allowed.',
+            'game_master.round.closeGlobalBetting',
+            {},
+            'success',
+            'danger'
+        )
+    }
+
+    function confirmWinner(side: 'wala' | 'meron' | 'draw') {
+        if (!requireRound()) return
+
+        confirmAndPost(
+            `Declare winner: ${side.toUpperCase()}?`,
+            'game_master.round.declare',
+            { winner: side },
+            'success',
+            side
+        )
+    }
+
+    function askLogout() {
+        confirmMessage.value = 'You will be logged out. Continue?'
+        confirmType.value = 'danger'
+
+        confirmAction.value = () => {
+            router.post(route('logout'), {}, {
                 onSuccess: () => {
-                    addToast('Logged out successfully.', 'success');
+                    addToast('Logged out successfully.', 'success')
                     router.flushAll()
                 }
-            }
-        )
+            })
+        }
+
+        confirmModal.value = true
     }
 
-    confirmModal.value = true
-}
+    function confirmAndPost(
+        message: string,
+        routeName: string,
+        payload: Record<string, any> = {},
+        toastType: 'success' | 'error' = 'success',
+        confirmColor: string = 'default'
+    ) {
+        confirmMessage.value = message
+        confirmType.value = confirmColor
+
+        confirmAction.value = () => {
+            router.post(
+                route(routeName, props.round.id),
+                { ...payload, noModal: true },
+                {
+                    onSuccess: (page: any) => {
+                        addToast((page.props.flash?.success as string) || '', toastType)
+                    }
+                }
+            )
+        }
+
+        confirmModal.value = true
+    }
+
+    function requireRound(): boolean {
+        if (!props.round.id) {
+            showAlert('No active round.')
+            return false
+        }
+        return true
+    }
 </script>
 
 <template>
@@ -189,9 +150,9 @@ const askLogout = () => {
             <div class="flex flex-col gap-4 border-b pb-6">
                 <h1 class="text-4xl font-bold text-black">{{ props.event.name ?? 'Test Event' }}</h1>
                 <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ props.round_number ?? 0 }}</h2>
+                <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ props.round.round_number ?? 0 }}</h2>
                 <p class="font-semibold">Status: 
-                    <span :class="props.round_status==='open'?'text-green-600':'text-red-600'">{{ props.round_status?.toUpperCase() }}</span>
+                    <span :class="props.round.round_status==='open'?'text-green-600':'text-red-600'">{{ props.round.round_status?.toUpperCase() }}</span>
                 </p>
                 </div>
                 <button
@@ -307,7 +268,7 @@ const askLogout = () => {
             <div class="flex justify-between items-center mb-2">
                 <span class="font-bold">Round #{{ item.id }}</span>
                 <span :class="{'text-indigo-600': item.winner==='wala','text-red-600': item.winner==='meron','text-yellow-500': item.winner==='draw','text-gray-500': !item.winner}" class="font-bold">
-                    {{ item.winner ? item.winner?.toUpperCase() : 'N/A' }}
+                    {{ item.winner ? item.winner?.toUpperCase() : '---' }} / {{ item.status.toUpperCase() }}
                 </span>
             </div>
             </div>

@@ -17,9 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 class RoundController extends Controller
 {
-    public function open()
+    public function open(Request $request)
     {
         $event = Event::cachedActive();
+        $noModal = $request->noModal ?? false;
 
         // Prevent multiple open rounds
         if (Round::where('event_id', $event->id)
@@ -55,6 +56,7 @@ class RoundController extends Controller
             'round' => $lastRound,
             'round_number' => $roundNumber,
             'round_status' => 'open',
+            'no_modal' => $noModal
         ]);
     }
 

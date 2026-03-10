@@ -1,209 +1,197 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import Echo from 'laravel-echo';
-import { CircleUserRound } from 'lucide-vue-next';
-import { computed, ref, onMounted, onUnmounted } from 'vue';
-import ConfirmModal from '@/components/ConfirmModal.vue'
-import Toast from '@/components/Toast.vue';
-import { addToast } from '@/helpers/toast';
-import BetConfirm from './BetConfirm.vue';
+    import { Head, router } from '@inertiajs/vue3'
+    import Echo from 'laravel-echo'
+    import { CircleUserRound } from 'lucide-vue-next'
+    import { computed, ref, onMounted, onUnmounted } from 'vue'
+    import ConfirmModal from '@/components/ConfirmModal.vue'
+    import Toast from '@/components/Toast.vue'
+    import { addToast } from '@/helpers/toast'
+    import { route } from 'ziggy-js';
+    import BetConfirm from './BetConfirm.vue'
 
-let echo = null as Echo<any> | null;
-const cancellationReason = ref(null);
-const confirmModal = ref(false)
-const confirmMessage = ref('')
-const confirmAction = ref<() => void>(() => {})
-const confirmType = ref('default')
+    let echo = null as Echo<any> | null
+    const cancellationReason = ref(null)
+    const confirmModal = ref(false)
+    const confirmMessage = ref('')
+    const confirmAction = ref<() => void>(() => {})
+    const confirmType = ref('default')
+    type Side = 'meron' | 'wala' | 'draw'
 
-const props = defineProps<{
-    event: any
-    round: any,
-    rounds: any[]
-}>()
+    const props = defineProps<{
+        event: any
+        round: any,
+        rounds: any[]
+    }>()
 
-const rounds = ref([...props.rounds])
-const currentRound = ref(props.round);
-const meronClosed = ref(props.round?.meron_closed || false);
-const walaClosed = ref(props.round?.wala_closed || false);
-const drawClosed = ref(props.round?.draw_closed || false);
-const roundStatus = computed(() => currentRound.value?.status)
-const roundNumber = computed(() => currentRound.value?.round_number)
-
-console.log(currentRound.value.round_number);
-
-// Initialize Echo
-onMounted(() => {
-    echo = new Echo({
-        broadcaster: 'reverb',
-        key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: import.meta.env.VITE_REVERB_PORT,
-        wssPort: import.meta.env.VITE_REVERB_PORT,
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-        enabledTransports: ['ws', 'wss'],
-    });
-
-    echo.connector.pusher.connection.bind('connected', () => {
-        console.log('Reverb connected');
-    });
-
-    // Listen for round.opened event
-    echo.channel('rounds')
-        .listen('.round.opened', (event: any) => {
-            console.log('Round opened event received:', event);
-            currentRound.value = event.round;
-
-            rounds.value.unshift(event.round)
-    
-            // Reset/initialize closed states from the new round
-            if (event.round) {
-                meronClosed.value = event.round.meron_closed || false;
-                walaClosed.value = event.round.wala_closed || false;
-                drawClosed.value = event.round.draw_closed || false;
-            }
-
-            cancellationReason.value = null;
-        })
-        .listen('.round.closed', (event: any) => {
-            console.log('Round closed:', event);
-            currentRound.value = event.round;
-
-            const index = rounds.value.findIndex(r => r.id === event.round.id)
-
-            if (index !== -1) {
-                rounds.value[index] = event.round
-            } else {
-                rounds.value.unshift(event.round)
-            }
-
-            cancellationReason.value = null;
-        })
-        .listen('.round.cancelled', (event: any) => {
-            console.log('Round cancelled:', event);
-            currentRound.value = event.round;
-
-            const index = rounds.value.findIndex(r => r.id === event.round.id)
-
-            if (index !== -1) {
-                rounds.value[index] = event.round
-            } else {
-                rounds.value.unshift(event.round)
-            }
-
-            cancellationReason.value = event.reason;
-        })
-        .listen('.round.side.closed', (event: any) => {
-            currentRound.value = event.round;
-            if (currentRound.value?.id === event.round.id) {
-                meronClosed.value = event.round.meron_closed;
-                walaClosed.value = event.round.wala_closed;
-                drawClosed.value = event.round.draw_closed;
-                
-                addToast(`${event.side.toUpperCase()} betting is now closed`, 'error');
-            }
-        })
-        .listen('.round.side.reopened', (event: any) => {
-            currentRound.value = event.round;
-            if (currentRound.value?.id === event.round.id) {
-                meronClosed.value = event.round.meron_closed;
-                walaClosed.value = event.round.wala_closed;
-                drawClosed.value = event.round.draw_closed;
-                addToast(`${event.side.toUpperCase()} betting is now open`, 'success');
-            }
-        })
-        .listen('.round.declare', (event: any) => {
-            console.log('Round declared:', event);
-            currentRound.value = event.round;
-
-            const index = rounds.value.findIndex(r => r.id === event.round.id)
-
-            if (index !== -1) {
-                rounds.value[index] = event.round
-            } else {
-                rounds.value.unshift(event.round)
-            }
-            
-            cancellationReason.value = null;
-            
-            addToast(`Winner for round #${event.round.round_number} is ${event.round.winner.toUpperCase()}.`, 'success')
-        });
-});
-
-// Clean up Echo connection
-onUnmounted(() => {
-  if (echo) {
-    echo.leaveChannel('rounds');
-  }
-});
-
-// bet amount
-const betAmount = ref(0);
-const presets = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
-const setAmount = (value: number) => {
-  betAmount.value = value
-}
-const clearAmount = () => {
-  betAmount.value = 0
-}
-
-// bet confirmation
-const side = ref<'meron' | 'wala' | 'draw'>('meron')
-const capital = 10000;
-const balance = ref(capital);
-const showConfirm = ref(false)
-const placeBet = (selectedSide: 'meron' | 'wala' | 'draw') => {
-    // Check if the selected side is closed
-    if ((selectedSide === 'meron' && meronClosed.value) ||
-        (selectedSide === 'wala' && walaClosed.value) ||
-        (selectedSide === 'draw' && drawClosed.value)) {
-        addToast(`${selectedSide.toUpperCase()} betting is currently closed`, 'error');
-        return;
+    interface Round {
+        id: number
+        round_number: number
+        status: string
+        winner?: Side | null
+        meron_closed: boolean
+        wala_closed: boolean
+        draw_closed: boolean
     }
 
-    side.value = selectedSide
-    showConfirm.value = true
-}
-const confirmBet = () => {
-  console.log('Bet confirmed:', betAmount.value, side.value)
-  if (betAmount.value > balance.value) {
-    addToast('Insufficient balance for this bet.', 'error')
-    showConfirm.value = false
-    return
-  }
+    const currentRound = ref<Round | null>(props.round)
+    const rounds = ref<Round[]>([...props.rounds])
+    const meronClosed = computed(() => currentRound.value?.meron_closed ?? false)
+    const walaClosed = computed(() => currentRound.value?.wala_closed ?? false)
+    const drawClosed = computed(() => currentRound.value?.draw_closed ?? false)
+    const roundStatus = computed(() => currentRound.value?.status)
+    const roundNumber = computed(() => currentRound.value?.round_number)
+    const remainingBalance = computed(() => balance.value - betAmount.value)
 
-  if (betAmount.value <= 0) {
-    addToast('Please enter a valid bet amount.', 'error')
-    showConfirm.value = false
-    return
-  }
+    onMounted(() => {
+        initializeEcho()
+    })
 
-  balance.value -= betAmount.value
-  addToast(`Bet ₱${betAmount.value} on ${side.value.toUpperCase()} confirmed!`, 'success')
+    onUnmounted(() => {
+        echo?.leave('rounds')
+    })
 
-  betAmount.value = 0
-  showConfirm.value = false
-}
-const cancelBet = () => showConfirm.value = false
+    // bet amount
+    const betAmount = ref(0);
+    const presets = [100,200,300,400,500,600,700,800,900,1000]
 
-const askLogout = () => {
-    confirmMessage.value = 'You will be logged out of the system. Continue?'
-    confirmType.value = 'danger'
+    const setAmount = (value: number) => {
+        betAmount.value = value
+    }
 
-    confirmAction.value = () => {
-        router.post(
-            route('logout'), 
-            {},
-            {
-                onSuccess: () => {
-                    addToast('Logged out successfully.', 'success');
-                    router.flushAll()
+    const clearAmount = () => betAmount.value = 0
+
+    // bet confirmation
+    const side = ref<'meron' | 'wala' | 'draw'>('meron')
+    const capital = 10000;
+    const balance = ref(capital);
+    const showConfirm = ref(false)
+
+    const cancelBet = () => showConfirm.value = false
+
+    const askLogout = () => {
+        confirmMessage.value = 'You will be logged out of the system. Continue?'
+        confirmType.value = 'danger'
+
+        confirmAction.value = () => {
+            router.post(
+                route('logout'), 
+                {},
+                {
+                    onSuccess: () => {
+                        addToast('Logged out successfully.', 'success');
+                        router.flushAll()
+                    }
                 }
-            }
-        )
+            )
+        }
+
+        confirmModal.value = true
     }
 
-    confirmModal.value = true
-}
+    function updateRoundState(round: any, reason: string | null = null) {
+        currentRound.value = round
+
+        const index = rounds.value.findIndex(r => r.id === round.id)
+
+        if (index !== -1) {
+            rounds.value[index] = round
+        } else {
+            rounds.value.unshift(round)
+        }
+
+        cancellationReason.value = reason
+    }
+
+    function initializeEcho() {
+        echo = new Echo({
+            broadcaster: 'reverb',
+            key: import.meta.env.VITE_REVERB_APP_KEY,
+            wsHost: import.meta.env.VITE_REVERB_HOST,
+            wsPort: import.meta.env.VITE_REVERB_PORT,
+            wssPort: import.meta.env.VITE_REVERB_PORT,
+            forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+            enabledTransports: ['ws', 'wss'],
+        })
+
+        echo.connector.pusher.connection.bind('connected', () => {
+            console.log('Reverb connected')
+        })
+
+        const events: Record<string, (event: any) => void> = {
+            '.round.opened': e => updateRoundState(e.round),
+
+            '.round.closed': e => updateRoundState(e.round),
+
+            '.round.cancelled': e => updateRoundState(e.round, e.reason),
+
+            '.round.declare': e => {
+                updateRoundState(e.round)
+                addToast(
+                    `Winner for round #${e.round.round_number} is ${e.round?.winner.toUpperCase()}`,
+                    'success'
+                )
+            },
+
+            '.round.side.closed': e => {
+                updateRoundState(e.round)
+                addToast(`${e.side.toUpperCase()} betting closed`, 'error')
+            },
+
+            '.round.side.reopened': e => {
+                updateRoundState(e.round)
+                addToast(`${e.side.toUpperCase()} betting reopened`, 'success')
+            }
+        }
+
+        const channel = echo.channel('rounds')
+
+        Object.entries(events).forEach(([event, handler]) => {
+            channel.listen(event, handler)
+        })
+    }
+
+    function placeBet(selectedSide: Side) {
+
+        if (roundStatus.value !== 'open') {
+            addToast('Betting is currently closed', 'error')
+            return
+        }
+
+        if (isSideClosed(selectedSide)) {
+            addToast(`${selectedSide.toUpperCase()} betting is closed`, 'error')
+            return
+        }
+
+        side.value = selectedSide
+        showConfirm.value = true
+    }
+
+    function confirmBet() {
+
+        if (betAmount.value <= 0) {
+            addToast('Enter a valid bet amount.', 'error')
+            return
+        }
+
+        if (betAmount.value > balance.value) {
+            addToast('Insufficient balance.', 'error')
+            return
+        }
+
+        balance.value -= betAmount.value
+
+        addToast(
+            `Bet ₱${betAmount.value} on ${side.value.toUpperCase()} confirmed`,
+            'success'
+        )
+
+        betAmount.value = 0
+        showConfirm.value = false
+    }
+
+    function isSideClosed(side: Side): boolean {
+        return currentRound.value?.[`${side}_closed`] ?? false
+    }
 </script>
 
 <template>
@@ -331,7 +319,7 @@ const askLogout = () => {
                 :visible="showConfirm"
                 :amount="betAmount"
                 :side="side"
-                :remaining-balance="balance - betAmount"
+                :remaining-balance="remainingBalance"
                 @confirm="confirmBet"
                 @cancel="cancelBet"
             />
@@ -370,7 +358,7 @@ const askLogout = () => {
             </div>
             <div class="flex justify-between">
             <span>Total Rounds</span>
-            <span class="font-bold">45</span>
+            <span class="font-bold">{{ roundNumber ?? '---' }}</span>
             </div>
         </div>
 
@@ -411,8 +399,8 @@ const askLogout = () => {
             <ul class="space-y-2 text-sm">
                 <li v-for="item in rounds" :key="item.id" class="flex justify-between bg-gray-50 p-2 rounded-lg">
                     <span>#{{ item.round_number }}</span>
-                    <span class="rounded-full bg-gray-400 p-1 font-medium text-xs text-white">
-                        {{ item.winner ? item.winner.toUpperCase() : 'N/A' }} / {{ item.status.toUpperCase() }}
+                    <span :class="{'text-indigo-600': item.winner==='wala','text-red-600': item.winner==='meron','text-yellow-500': item.winner==='draw','text-gray-500': !item.winner}" class="font-bold">
+                        {{ item.winner ? item.winner?.toUpperCase() : '---' }} / {{ item.status.toUpperCase() }}
                     </span>
                 </li>
             </ul>
@@ -434,6 +422,7 @@ const askLogout = () => {
     </div>
     </div>
 </template>
+
 <style>
     /* Chrome, Safari, Edge, Opera */
     input::-webkit-outer-spin-button,

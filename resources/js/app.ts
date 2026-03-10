@@ -9,6 +9,7 @@ import { ZiggyVue } from 'ziggy-js';
 configureEcho({
     broadcaster: 'reverb',
 });
+
 import { initializeTheme } from './composables/useAppearance';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
