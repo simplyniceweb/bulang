@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import { CircleUserRound } from 'lucide-vue-next';
 import { ref } from 'vue';
 import AlertModal from '@/components/AlertModal.vue'
@@ -8,9 +8,8 @@ import StaticAlertModal from '@/components/StaticAlertModal.vue'
 import Toast from '@/components/Toast.vue'
 import { useAlert } from '@/composables/useAlert'
 import { useFlashAlert } from '@/composables/useFlashAlert'
-import { formatCurrency, formatNumber } from '@/helpers/format';
+import { formatNumber } from '@/helpers/format';
 import { addToast } from '@/helpers/toast';
-import { logout } from '@/routes';
 
 const confirmModal = ref(false)
 const confirmMessage = ref('')
@@ -29,24 +28,11 @@ const {
 const props = defineProps<{
     event: any
     round: any,
+    rounds: any[],
     round_id: number | null,
     round_number: number | null,
     round_status: string | null,
 }>()
-
-/* --- Mock Recent Rounds --- */
-const recentRounds = ref([
-  { id: 10, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 9, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 8, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 7, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 6, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 5, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 4, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 3, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-  { id: 2, winner: 'wala', totalWala: 5000, totalMeron: 2000, totalDraw: 500, tellerTotals: [{name: 'Teller 1', wala: 2000, meron: 500, draw: 100}, {name: 'Teller 2', wala: 3000, meron: 1500, draw: 400}] },
-  { id: 1, winner: 'meron', totalWala: 3000, totalMeron: 4000, totalDraw: 200, tellerTotals: [{name: 'Teller 1', wala: 1500, meron: 2000, draw: 100}, {name: 'Teller 2', wala: 1500, meron: 2000, draw: 100}] },
-])
 
 /* --- Actions --- */
 function startRound() {
@@ -171,9 +157,25 @@ function confirmWinner(side: 'wala' | 'meron' | 'draw') {
 
 }
 
-const handleLogout = () => {
-    router.flushAll();
-};
+const askLogout = () => {
+    confirmMessage.value = 'You will be logged out of the system. Continue?'
+    confirmType.value = 'danger'
+
+    confirmAction.value = () => {
+        router.post(
+            route('logout'), 
+            {},
+            {
+                onSuccess: () => {
+                    addToast('Logged out successfully.', 'success');
+                    router.flushAll()
+                }
+            }
+        )
+    }
+
+    confirmModal.value = true
+}
 </script>
 
 <template>
@@ -290,41 +292,23 @@ const handleLogout = () => {
                 <p class="font-bold text-lg"><CircleUserRound class="display-inline-block"/>  Jaylord Game Master</p>
                 <p class="text-sm text-gray-500">Active Session</p>
                 </div>
-                <Link
+                <button
                     class="text-sm text-red-500 hover:underline cursor-pointer"
-                    :href="logout()"
-                    @click="handleLogout"
-                    as="button"
+                    @click.prevent="askLogout"
                     data-test="logout-button"
                 >
                     Log out
-                </Link>
+                </button>
             </div>
 
-        <h3 class="text-lg font-bold mb-3">Recent Rounds</h3>
+        <h3 class="text-lg font-bold my-3">Recent Rounds</h3>
         <div class="flex-1 overflow-y-auto space-y-4">
-            <div v-for="r in recentRounds" :key="r.id" class="border rounded-lg p-3 hover:bg-gray-50">
+            <div v-for="item in rounds" :key="item.id" class="border rounded-lg p-3 hover:bg-gray-50">
             <div class="flex justify-between items-center mb-2">
-                <span class="font-bold">Round #{{ r.id }}</span>
-                <span :class="{'text-indigo-600': r.winner==='wala','text-red-600': r.winner==='meron','text-yellow-500': r.winner==='draw'}" class="font-bold">{{ r.winner?.toUpperCase() }}</span>
-            </div>
-
-            <div class="grid grid-cols-3 text-center font-semibold border-t pt-1">
-                <div class="text-indigo-600">WALA: {{ formatCurrency(r.totalWala) }}</div>
-                <div class="text-red-600">MERON: {{ formatCurrency(r.totalMeron) }}</div>
-                <div class="text-yellow-500">DRAW: {{ formatCurrency(r.totalDraw) }}</div>
-            </div>
-
-            <!-- Teller Totals -->
-            <div v-if="r.tellerTotals?.length" class="mt-2 border-t pt-2 space-y-1 text-sm">
-                <div v-for="t in r.tellerTotals" :key="t.name" class="flex justify-between px-2">
-                <span>{{ t.name }}</span>
-                <span class="flex gap-3">
-                    <span class="text-indigo-600 border-e pr-2">{{ formatCurrency(t.wala) }}</span>
-                    <span class="text-red-600 border-e pr-2">{{ formatCurrency(t.meron) }}</span>
-                    <span class="text-yellow-500 border-e pr-2">{{ formatCurrency(t.draw) }}</span>
+                <span class="font-bold">Round #{{ item.id }}</span>
+                <span :class="{'text-indigo-600': item.winner==='wala','text-red-600': item.winner==='meron','text-yellow-500': item.winner==='draw','text-gray-500': !item.winner}" class="font-bold">
+                    {{ item.winner ? item.winner?.toUpperCase() : 'N/A' }}
                 </span>
-                </div>
             </div>
             </div>
         </div>

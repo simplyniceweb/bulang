@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import Echo from 'laravel-echo';
 import { CircleUserRound } from 'lucide-vue-next';
 import { computed, ref, onMounted, onUnmounted } from 'vue';
+import ConfirmModal from '@/components/ConfirmModal.vue'
 import Toast from '@/components/Toast.vue';
 import { addToast } from '@/helpers/toast';
-import { logout } from '@/routes';
 import BetConfirm from './BetConfirm.vue';
 
 let echo = null as Echo<any> | null;
 const cancellationReason = ref(null);
+const confirmModal = ref(false)
+const confirmMessage = ref('')
+const confirmAction = ref<() => void>(() => {})
+const confirmType = ref('default')
 
 const props = defineProps<{
     event: any
@@ -181,9 +185,25 @@ const confirmBet = () => {
 }
 const cancelBet = () => showConfirm.value = false
 
-const handleLogout = () => {
-    router.flushAll();
-};
+const askLogout = () => {
+    confirmMessage.value = 'You will be logged out of the system. Continue?'
+    confirmType.value = 'danger'
+
+    confirmAction.value = () => {
+        router.post(
+            route('logout'), 
+            {},
+            {
+                onSuccess: () => {
+                    addToast('Logged out successfully.', 'success');
+                    router.flushAll()
+                }
+            }
+        )
+    }
+
+    confirmModal.value = true
+}
 </script>
 
 <template>
@@ -329,15 +349,13 @@ const handleLogout = () => {
             <p class="font-bold text-lg"><CircleUserRound class="display-inline-block"/>  Jaylord Teller</p>
             <p class="text-sm text-gray-500">Active Session</p>
             </div>
-            <Link
+            <button
                 class="text-sm text-red-500 hover:underline cursor-pointer"
-                :href="logout()"
-                @click="handleLogout"
-                as="button"
+                @click.prevent="askLogout"
                 data-test="logout-button"
             >
                 Log out
-            </Link>
+            </button>
         </div>
 
         <!-- Capital Info -->
@@ -402,6 +420,17 @@ const handleLogout = () => {
 
         </div>
 
+
+        <ConfirmModal
+            :show="confirmModal"
+            title="Confirm Action"
+            :message="confirmMessage"
+            confirmText="Confirm"
+            cancelText="Cancel"
+            @confirm="() => { confirmAction(); confirmModal = false }"
+            @cancel="confirmModal = false"
+            :colorType="confirmType"
+        />
     </div>
     </div>
 </template>

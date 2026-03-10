@@ -22,9 +22,16 @@ class DashboardController extends Controller
                 ->latest('round_number')
                 ->first();
 
+            $rounds = Round::select('id', 'round_number', 'winner', 'status')
+                        ->where('event_id', $event->id)
+                        ->latest('round_number')
+                        ->take(20)
+                        ->get();
+
             return Inertia::render('GameMaster/Dashboard', [
                 'event' => $event,
                 'round' => $lastRound,
+                'rounds' => $rounds,
                 'round_id' => $lastRound ? $lastRound->id : null,
                 'round_number' => $lastRound ? $lastRound->round_number : 0,
                 'round_status' => $lastRound ? $lastRound->status : 'closed',
