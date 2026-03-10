@@ -30,4 +30,15 @@ export default defineConfig({
             },
         }),
     ],
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true, // Ensures it doesn't jump to another port if 5173 is busy
+        cors: {
+            origin: '*', // Allow all origins during development
+        },
+        hmr: {
+            host: '192.168.254.200',
+        },
+    },
 });

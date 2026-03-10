@@ -24,3 +24,7 @@ export function formatCurrency(value: number): string {
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat().format(value)
 }
+
+export function capitalizeFirstLetter(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}

@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\GameMaster\DashboardController as GameMasterDashboardController;
 use App\Http\Controllers\GameMaster\RoundController;
+use App\Http\Controllers\Teller\DashboardController as TellerDashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -18,9 +19,8 @@ Route::middleware(['auth', 'verified', 'teller'])
     ->prefix('teller')
     ->name('teller.')
     ->group(function () {
-        Route::get('/', function () {
-            return Inertia::render('Teller/Dashboard');
-        })->name('dashboard');
+        Route::get('/', [TellerDashboardController::class, 'index'])
+            ->name('dashboard');
 });
 
 Route::middleware(['auth', 'verified', 'game_master'])
@@ -31,9 +31,6 @@ Route::middleware(['auth', 'verified', 'game_master'])
             ->name('dashboard');
 
         Route::post('/round/open', [RoundController::class, 'open'])->name('round.open');
-
-        Route::post('/round/{round}/close-bet', [RoundController::class, 'closeBet'])
-            ->name('round.closeBet');
 
         Route::post('/round/{round}/declare', [RoundController::class, 'declareWinner'])
             ->name('round.declare');

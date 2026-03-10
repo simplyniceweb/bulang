@@ -17,6 +17,10 @@ export function useFlashAlert() {
   watch(flash, (f: any) => {
 
     if (!f) return
+    
+    if (f.no_modal) {
+        return
+    }
 
     if (f.success) {
 

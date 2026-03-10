@@ -4,7 +4,10 @@ namespace App\Http\Controllers\GameMaster;
 
 use App\Events\RoundCancelled;
 use App\Events\RoundClosed;
+use App\Events\RoundDeclare;
 use App\Events\RoundOpened;
+use App\Events\RoundSideClosed;
+use App\Events\RoundSideReopened;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
@@ -55,29 +58,13 @@ class RoundController extends Controller
         ]);
     }
 
-    public function closeBet(Round $round, Request $request)
-    {
-        $side = $request->side;
-
-        if ($side === 'wala' && $round->total_wala <= $round->total_meron) {
-            return back()->withErrors(['wala' => 'Wala must be higher to close']);
-        }
-
-        if ($side === 'meron' && $round->total_meron <= $round->total_wala) {
-            return back()->withErrors(['meron' => 'Meron must be higher to close']);
-        }
-
-        $round->update([
-            "{$side}_closed" => true
-        ]);
-
-        return back();
-    }
-
     public function declareWinner(Round $round, Request $request)
     {
-        if ($round->status === 'cancelled') {
-            return back()->withErrors(['round' => 'Cannot declare winner for a cancelled round.']);
+        $winner = $request->winner; // 'meron' | 'wala' | 'draw'
+        $noModal = $request->noModal ?? false;
+
+        if ($round->status === 'cancelled' || $round->status === 'open') {
+            return back()->withErrors(['round' => 'Cannot declare winner for a cancelled or open round.']);
         }
 
         if ($round->status === 'closed' && !$round->betting_closed) {
@@ -87,8 +74,6 @@ class RoundController extends Controller
         if ($round->winner !== null) {
             return back()->withErrors(['round' => "Winner has already been declared for this round #{$round->round_number} and it's ".strtoupper($round->winner)."."]);
         }
-        
-        $winner = $request->winner;
 
         $round->update([
             'status' => 'closed',
@@ -97,16 +82,20 @@ class RoundController extends Controller
         ]);
 
         Cache::forget('active_event');
+        broadcast(new RoundDeclare($round));
 
         return back()->with([
-            'success' => 'Winner declared successfully.',
+            'success' => "Winner for round #{$round->round_number} is ".strtoupper($winner).".",
             'round_number' => $round->round_number,
             'round_status' => 'closed',
+            'no_modal' => $noModal
         ]);
     }
 
-    public function cancel(Round $round)
+    public function cancel(Round $round, Request $request)
     {
+        $noModal = $request->noModal ?? false;
+
         // Prevent recancelling round or cancelling after winner declared
         if ($round->status !== 'open' || $round->winner !== null) {
             return back()->withErrors([
@@ -126,6 +115,7 @@ class RoundController extends Controller
             'success' => 'Round cancelled successfully.',
             'round_number' => $round->round_number,
             'round_status' => 'cancelled',
+            'no_modal' => $noModal
         ]);
     }
 
@@ -133,6 +123,7 @@ class RoundController extends Controller
     {
         $side = $request->side; // 'meron' | 'wala' | 'draw'
         $reopen = $request->reopen ?? false;
+        $noModal = $request->noModal ?? false;
 
         if (!in_array($side, ['meron','wala','draw'])) {
             return back()->withErrors([
@@ -154,16 +145,24 @@ class RoundController extends Controller
         $round->update([
             $column => !$reopen ? true : false
         ]);
+        
+        broadcast($reopen 
+            ? new RoundSideReopened($round, $side) 
+            : new RoundSideClosed($round, $side)
+        );
 
         return back()->with([
-            'success' => ucfirst($side).' betting is now '.($reopen ? 'open' : 'closed').'.',
+            'success' => strtoupper($side).' betting is now '.strtoupper($reopen ? 'open' : 'closed').'.',
             'round_number' => $round->round_number,
             'round_status' => $round->status,
+            'no_modal' => $noModal
         ]);
     }
 
-    public function closeGlobalBetting(Round $round)
+    public function closeGlobalBetting(Round $round, Request $request)
     {
+        $noModal = $request->noModal ?? false;
+
         if ($round->status !== 'open') {
             return back()->withErrors(['round' => 'Global betting already closed or round cancelled.']);
         }
@@ -179,6 +178,7 @@ class RoundController extends Controller
         return back()->with([
             'success' => 'Global betting closed. You can now declare the winner.',
             'round_number' => $round->round_number,
+            'no_modal' => $noModal
         ]);
     }
 }

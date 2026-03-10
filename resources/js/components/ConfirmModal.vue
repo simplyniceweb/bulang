@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { warn } from 'console';
 import { computed } from 'vue';
 
 // 1. Define the props. Note: colorType is now optional

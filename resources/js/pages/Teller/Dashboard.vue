@@ -2,46 +2,127 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import Echo from 'laravel-echo';
 import { CircleUserRound } from 'lucide-vue-next';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import Toast from '@/components/Toast.vue';
-import { tellerClock } from '@/helpers/time';
 import { addToast } from '@/helpers/toast';
 import { logout } from '@/routes';
 import BetConfirm from './BetConfirm.vue';
 
-let echo = null;
-const currentRound = ref(null);
+let echo = null as Echo<any> | null;
 const cancellationReason = ref(null);
+
+const props = defineProps<{
+    event: any
+    round: any,
+    rounds: any[]
+}>()
+
+const rounds = ref([...props.rounds])
+const currentRound = ref(props.round);
+const meronClosed = ref(props.round?.meron_closed || false);
+const walaClosed = ref(props.round?.wala_closed || false);
+const drawClosed = ref(props.round?.draw_closed || false);
+const roundStatus = computed(() => currentRound.value?.status)
+const roundNumber = computed(() => currentRound.value?.round_number)
+
+console.log(currentRound.value.round_number);
 
 // Initialize Echo
 onMounted(() => {
-  echo = new Echo({
-    broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: import.meta.env.VITE_REVERB_PORT,
-    wssPort: import.meta.env.VITE_REVERB_PORT,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
-    enabledTransports: ['ws', 'wss'],
-  });
-
-  // Listen for round.opened event
-  echo.channel('rounds')
-    .listen('.round.opened', (event: any) => {
-      console.log('Round opened event received:', event);
-      currentRound.value = event.round;
-      cancellationReason.value = null;
-    })
-    .listen('.round.closed', (event: any) => {
-      console.log('Round closed:', event);
-      currentRound.value = event.round;
-      cancellationReason.value = null;
-    })
-    .listen('.round.cancelled', (event: any) => {
-      console.log('Round cancelled:', event);
-      currentRound.value = event.round;
-      cancellationReason.value = event.reason;
+    echo = new Echo({
+        broadcaster: 'reverb',
+        key: import.meta.env.VITE_REVERB_APP_KEY,
+        wsHost: import.meta.env.VITE_REVERB_HOST,
+        wsPort: import.meta.env.VITE_REVERB_PORT,
+        wssPort: import.meta.env.VITE_REVERB_PORT,
+        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        enabledTransports: ['ws', 'wss'],
     });
+
+    echo.connector.pusher.connection.bind('connected', () => {
+        console.log('Reverb connected');
+    });
+
+    // Listen for round.opened event
+    echo.channel('rounds')
+        .listen('.round.opened', (event: any) => {
+            console.log('Round opened event received:', event);
+            currentRound.value = event.round;
+
+            rounds.value.unshift(event.round)
+    
+            // Reset/initialize closed states from the new round
+            if (event.round) {
+                meronClosed.value = event.round.meron_closed || false;
+                walaClosed.value = event.round.wala_closed || false;
+                drawClosed.value = event.round.draw_closed || false;
+            }
+
+            cancellationReason.value = null;
+        })
+        .listen('.round.closed', (event: any) => {
+            console.log('Round closed:', event);
+            currentRound.value = event.round;
+
+            const index = rounds.value.findIndex(r => r.id === event.round.id)
+
+            if (index !== -1) {
+                rounds.value[index] = event.round
+            } else {
+                rounds.value.unshift(event.round)
+            }
+
+            cancellationReason.value = null;
+        })
+        .listen('.round.cancelled', (event: any) => {
+            console.log('Round cancelled:', event);
+            currentRound.value = event.round;
+
+            const index = rounds.value.findIndex(r => r.id === event.round.id)
+
+            if (index !== -1) {
+                rounds.value[index] = event.round
+            } else {
+                rounds.value.unshift(event.round)
+            }
+
+            cancellationReason.value = event.reason;
+        })
+        .listen('.round.side.closed', (event: any) => {
+            currentRound.value = event.round;
+            if (currentRound.value?.id === event.round.id) {
+                meronClosed.value = event.round.meron_closed;
+                walaClosed.value = event.round.wala_closed;
+                drawClosed.value = event.round.draw_closed;
+                
+                addToast(`${event.side.toUpperCase()} betting is now closed`, 'error');
+            }
+        })
+        .listen('.round.side.reopened', (event: any) => {
+            currentRound.value = event.round;
+            if (currentRound.value?.id === event.round.id) {
+                meronClosed.value = event.round.meron_closed;
+                walaClosed.value = event.round.wala_closed;
+                drawClosed.value = event.round.draw_closed;
+                addToast(`${event.side.toUpperCase()} betting is now open`, 'success');
+            }
+        })
+        .listen('.round.declare', (event: any) => {
+            console.log('Round declared:', event);
+            currentRound.value = event.round;
+
+            const index = rounds.value.findIndex(r => r.id === event.round.id)
+
+            if (index !== -1) {
+                rounds.value[index] = event.round
+            } else {
+                rounds.value.unshift(event.round)
+            }
+            
+            cancellationReason.value = null;
+            
+            addToast(`Winner for round #${event.round.round_number} is ${event.round.winner.toUpperCase()}.`, 'success')
+        });
 });
 
 // Clean up Echo connection
@@ -67,8 +148,16 @@ const capital = 10000;
 const balance = ref(capital);
 const showConfirm = ref(false)
 const placeBet = (selectedSide: 'meron' | 'wala' | 'draw') => {
-  side.value = selectedSide
-  showConfirm.value = true
+    // Check if the selected side is closed
+    if ((selectedSide === 'meron' && meronClosed.value) ||
+        (selectedSide === 'wala' && walaClosed.value) ||
+        (selectedSide === 'draw' && drawClosed.value)) {
+        addToast(`${selectedSide.toUpperCase()} betting is currently closed`, 'error');
+        return;
+    }
+
+    side.value = selectedSide
+    showConfirm.value = true
 }
 const confirmBet = () => {
   console.log('Bet confirmed:', betAmount.value, side.value)
@@ -92,19 +181,6 @@ const confirmBet = () => {
 }
 const cancelBet = () => showConfirm.value = false
 
-
-// For date and time
-const now = ref(new Date())
-let timer: number | null = null
-const clock = ref(tellerClock(now.value))
-onMounted(() => {
-  timer = setInterval(() => {
-    now.value = new Date()
-    clock.value = tellerClock(now.value)
-  }, 60000)
-})
-onUnmounted(() => clearInterval(timer as number))
-
 const handleLogout = () => {
     router.flushAll();
 };
@@ -113,13 +189,6 @@ const handleLogout = () => {
 <template>
     <Toast />
     <Head title="Teller Dashboard" />
-
-    <div v-if="currentRound" class="mt-4 p-4 border rounded">
-      <h3 class="text-lg font-bold">Current Round #{{ currentRound.round_number }}</h3>
-      <p>Round ID: {{ currentRound.id }}</p>
-      <p>Status: {{ currentRound.status }}</p>
-      <p>Started: {{ currentRound.opened_at }}</p>
-    </div>
 
     <div class="h-[calc(100vh-80px)] p-4 bg-gray-100">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
@@ -130,16 +199,28 @@ const handleLogout = () => {
         <!-- ROUND HEADER -->
         <div class="bg-white rounded-2xl shadow p-4 flex justify-between items-center">
             <div>
-            <p class="text-gray-500 text-sm">Current Round</p>
-            <p class="text-4xl font-extrabold text-indigo-600">
-                #12
-            </p>
+                <p class="text-gray-800 text-sm">Current Round</p>
+                <p class="text-4xl font-extrabold text-indigo-600">
+                    <span :class="roundNumber ? 'text-indigo-600' : 'text-gray-300'">
+                        # {{ roundNumber ?? '---' }}
+                    </span>
+                </p>
             </div>
             <div class="text-right">
-            <p class="text-gray-500 text-sm">Date &amp; Time</p>
-            <p class="text-sm font-bold text-red-500">
-                {{ clock.date }}<br/>{{ clock.time }}
-            </p>
+                <p class="text-gray-800 text-sm">Status</p>
+                <p
+                :class="[
+                'text-4xl uppercase font-bold',
+                    {
+                        'text-green-500': roundStatus === 'open',
+                        'text-red-500': roundStatus === 'closed',
+                        'text-gray-500': roundStatus === 'cancelled',
+                        'text-gray-300': !roundStatus
+                    }
+                ]"
+                >
+                    {{ roundStatus ?? '---' }}
+                </p>
             </div>
         </div>
 
@@ -163,10 +244,10 @@ const handleLogout = () => {
                     :key="preset"
                     @click="setAmount(preset)"
                     :class="[
-                        'font-semibold py-6 md:py-8 rounded-xl cursor-pointer text-xl md:text-3xl transition',
+                        'font-bold md:font-semibold py-6 md:py-8 rounded-xl cursor-pointer text-md md:text-3xl transition',
                         betAmount === preset
                         ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 hover:bg-gray-200'
+                        : 'bg-indigo-200 hover:bg-indigo-300'
                     ]"
                 >
                     {{ preset }}
@@ -188,29 +269,43 @@ const handleLogout = () => {
 
             <button
                 @click="placeBet('wala')"
-                class="text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg
-        transition transform duration-150
-        bg-blue-600 hover:bg-blue-700 active:scale-95 cursor-pointer"
-            >
-                WALA
+                :disabled="walaClosed"
+                :class="[
+                    'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
+                    !walaClosed 
+                    ? 'bg-blue-600 hover:bg-blue-700 active:scale-95 cursor-pointer' 
+                    : 'bg-blue-400 cursor-not-allowed opacity-50'
+                ]">
+                <span>WALA</span>
+                <span v-if="walaClosed" class="block text-xs mt-1">(CLOSED)</span>
             </button>
 
             <button
                 @click="placeBet('draw')"
-                class="text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg
-        transition transform duration-150
-        bg-yellow-600 hover:bg-yellow-700 active:scale-95 cursor-pointer"
-            >
-                DRAW
+                :disabled="drawClosed"
+                :class="[
+                    'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
+                    !drawClosed 
+                    ? 'bg-yellow-600 hover:bg-yellow-700 active:scale-95 cursor-pointer' 
+                    : 'bg-yellow-400 cursor-not-allowed opacity-50'
+                ]"
+                >
+                <span>DRAW</span>
+                <span v-if="drawClosed" class="block text-xs mt-1">(CLOSED)</span>
             </button>
 
             <button
                 @click="placeBet('meron')"
-                class="text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg
-        transition transform duration-150
-        bg-red-600 hover:bg-red-700 active:scale-95 cursor-pointer"
-            >
-                MERON
+                :disabled="meronClosed"
+                :class="[
+                    'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
+                    !meronClosed 
+                    ? 'bg-red-600 hover:bg-red-700 active:scale-95 cursor-pointer' 
+                    : 'bg-red-400 cursor-not-allowed opacity-50'
+                ]"
+                >
+                <span>MERON</span>
+                <span v-if="meronClosed" class="block text-xs mt-1">(CLOSED)</span>
             </button>
             <BetConfirm
                 :visible="showConfirm"
@@ -266,23 +361,29 @@ const handleLogout = () => {
             <p class="font-semibold mb-2">Current Round Totals</p>
 
             <div class="flex justify-between">
-            <span class="text-red-600 font-medium">MERON (2.475)</span>
-            <span class="font-bold">₱2,000</span>
+                <span class="text-red-600 font-medium">MERON (2.475)</span>
+                <span class="font-bold">₱2,000</span>
+                <span v-if="meronClosed" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
+                <span v-else class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">OPEN</span>
             </div>
 
             <div class="flex justify-between">
-            <span class="text-yellow-600 font-medium">DRAW (1.7)</span>
-            <span class="font-bold">₱500</span>
+                <span class="text-yellow-600 font-medium">DRAW (1.7)</span>
+                <span class="font-bold">₱500</span>
+                <span v-if="drawClosed" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
+                <span v-else class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">OPEN</span>
             </div>
 
             <div class="flex justify-between">
-            <span class="text-green-600 font-medium">WALA (1.65)</span>
-            <span class="font-bold">₱3,000</span>
+                <span class="text-green-600 font-medium">WALA (1.65)</span>
+                <span class="font-bold">₱3,000</span>
+                <span v-if="walaClosed" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
+                <span v-else class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">OPEN</span>
             </div>
 
             <div class="flex justify-between border-t pt-2 font-semibold">
-            <span>Total</span>
-            <span>₱5,500</span>
+                <span>Total</span>
+                <span>₱5,500</span>
             </div>
         </div>
 
@@ -290,50 +391,12 @@ const handleLogout = () => {
         <div class="mt-6 border-t pt-4"><p class="font-semibold mb-3">Recent Rounds <span class="float-right">Winner</span></p></div>
         <div class="flex-1 overflow-y-auto max-h-96">
             <ul class="space-y-2 text-sm">
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#11</span>
-                <span class="text-green-600 font-bold">WALA</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#10</span>
-                <span class="text-red-600 font-bold">MERON</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#9</span>
-                <span class="text-yellow-600 font-bold">DRAW</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#8</span>
-                <span class="text-yellow-600 font-bold">DRAW</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#7</span>
-                <span class="text-yellow-600 font-bold">DRAW</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#6</span>
-                <span class="text-green-600 font-bold">WALA</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#5</span>
-                <span class="text-red-600 font-bold">MERON</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#4</span>
-                <span class="text-green-600 font-bold">WALA</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#3</span>
-                <span class="text-red-600 font-bold">MERON</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#2</span>
-                <span class="text-green-600 font-bold">WALA</span>
-            </li>
-            <li class="flex justify-between bg-gray-50 p-2 rounded-lg">
-                <span>#1</span>
-                <span class="text-red-600 font-bold">MERON</span>
-            </li>
+                <li v-for="item in rounds" :key="item.id" class="flex justify-between bg-gray-50 p-2 rounded-lg">
+                    <span>#{{ item.round_number }}</span>
+                    <span class="rounded-full bg-gray-400 p-1 font-medium text-xs text-white">
+                        {{ item.winner ? item.winner.toUpperCase() : 'N/A' }} / {{ item.status.toUpperCase() }}
+                    </span>
+                </li>
             </ul>
         </div>
 
@@ -343,16 +406,16 @@ const handleLogout = () => {
     </div>
 </template>
 <style>
-/* Chrome, Safari, Edge, Opera */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+    /* Chrome, Safari, Edge, Opera */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+    }
 
-/* Firefox */
-input[type=number] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
+    /* Firefox */
+    input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    }
 </style>
