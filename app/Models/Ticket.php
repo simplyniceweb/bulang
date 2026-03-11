@@ -22,6 +22,10 @@ class Ticket extends Model
         'claimed_at',
     ];
 
+    protected $casts = [
+        'claimed_at' => 'datetime',
+    ];
+
     protected $dates = [
         'claimed_at',
     ];

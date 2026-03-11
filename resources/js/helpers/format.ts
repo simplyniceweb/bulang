@@ -21,8 +21,13 @@ export function formatCurrency(value: number): string {
   return value.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })
 }
 
-export function formatNumber(value: number): string {
-  return new Intl.NumberFormat().format(value)
+export function formatNumber(value: string | number): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  
+  return new Intl.NumberFormat('en-PH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num || 0);
 }
 
 export function capitalizeFirstLetter(str: string): string {

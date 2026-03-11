@@ -1,16 +1,21 @@
 <script setup lang="ts">
-    import { Head, router } from '@inertiajs/vue3'
+    import { Head, router, usePage } from '@inertiajs/vue3'
+    import axios from 'axios';
     import Echo from 'laravel-echo'
     import { CircleUserRound } from 'lucide-vue-next'
-    import { computed, ref, onMounted, onUnmounted } from 'vue'
+    import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
     import ConfirmModal from '@/components/ConfirmModal.vue'
+    import TicketModal from '@/components/TicketModal.vue'
     import Toast from '@/components/Toast.vue'
     import { addToast } from '@/helpers/toast'
     import { route } from 'ziggy-js';
     import BetConfirm from './BetConfirm.vue'
+    import PayoutTicket from './PayoutTicket.vue'
+    import TicketReceipt from './Ticket.vue'
+    import { QZPrintService } from '@/services/qz-print.service'
 
     let echo = null as Echo<any> | null
-    const cancellationReason = ref(null)
+    const cancellationReason = ref<string | null>(null)
     const confirmModal = ref(false)
     const confirmMessage = ref('')
     const confirmAction = ref<() => void>(() => {})
@@ -25,6 +30,7 @@
 
     interface Round {
         id: number
+        event_id: number
         round_number: number
         status: string
         winner?: Side | null
@@ -166,6 +172,15 @@
         showConfirm.value = true
     }
 
+
+    const inputBuffer = ref("");
+    const canClaim = ref(false);
+    const currentTicket = ref(null);
+    const isVerifying = ref(false);
+    const scannedTicket = ref(null as string | null);
+    const scannedStatus = ref(null as string | null);
+    const ticketComp = ref<InstanceType<typeof TicketReceipt> | null>(null);
+
     function confirmBet() {
 
         if (betAmount.value <= 0) {
@@ -180,22 +195,143 @@
 
         balance.value -= betAmount.value
 
-        addToast(
-            `Bet ₱${betAmount.value} on ${side.value.toUpperCase()} confirmed`,
-            'success'
-        )
+        router.post(
+            route('teller.bet.index', currentRound.value?.event_id), 
+            {
+                amount: betAmount.value,
+                round_id: currentRound.value?.id,
+                side: side.value
+            },
+            {
+                onSuccess: () => {
+                    const newTicket = (usePage().props.flash as Record<string, any>).newTicket;
+                    if (newTicket) {
+                        currentTicket.value = newTicket
+                        nextTick(() => {
+                            ticketComp.value?.printReceipt()
+                        })
+                    } else {
+                        addToast('Bet placed but failed to retrieve ticket for printing.', 'error')
+                    }
 
-        betAmount.value = 0
-        showConfirm.value = false
+                    addToast('Bet confirmed and printing...', 'success');
+                    betAmount.value = 0
+                    showConfirm.value = false
+                },
+                onError: () => {
+                    addToast('Failed to place bet. Please try again.', 'error')
+                    balance.value += betAmount.value
+                }
+            }
+        )
     }
 
     function isSideClosed(side: Side): boolean {
         return currentRound.value?.[`${side}_closed`] ?? false
     }
+
+    const verifyTicket = async (code: string) => {
+        if (!code || isVerifying.value) return;
+
+        scannedTicket.value = null;
+        canClaim.value = false;
+
+        isVerifying.value = true;
+        try {
+            const response = await axios.get(`/teller/bet/${code}/verify`);
+            
+            // Populate the modal data
+            scannedTicket.value = response.data.ticket;
+            scannedStatus.value = response.data.status;
+            canClaim.value = response.data.can_payout; // matches your controller variable
+        } catch (error) {
+            console.error("Verification failed", error);
+            addToast('Ticket not found', 'error');
+        } finally {
+            isVerifying.value = false;
+        }
+    };
+
+    const handleScannerInput = (e: KeyboardEvent) => {
+        // Ignore input if a modal is already open or user is typing in an input field
+        if (e.target instanceof HTMLInputElement) {
+            return;
+        }
+
+        if (e.key === 'Enter') {
+            if (inputBuffer.value.length > 5) { // Basic check to ensure it's a real code
+                verifyTicket(inputBuffer.value.trim());
+            }
+            inputBuffer.value = ""; // Clear for next scan
+        } else {
+            // Barcode scanners are fast; this builds the string character by character
+            inputBuffer.value += e.key;
+        }
+    };
+
+    const isProcessingPayout = ref(false);
+    const payoutTicketRef = ref<InstanceType<typeof PayoutTicket> | null>(null);
+    const currentPaidTicket = ref<any>(null);
+
+    const handlePayoutProcess = async (ticketNumber: string) => {
+        if (isProcessingPayout.value) return;
+            
+        isProcessingPayout.value = true;
+        try {
+            const response = await axios.post(`/teller/bet/${ticketNumber}/claim`);
+            
+            // 1. Assign the data to the hidden print component
+            currentPaidTicket.value = response.data.ticket;
+
+            // 2. Wait for Vue to render the component with data, then print
+            nextTick(() => {
+                payoutTicketRef.value?.printReceipt();
+                addToast('Payout Successful!', 'success');
+                
+                // 3. Reset state
+                scannedTicket.value = null;
+            });
+
+        } catch (error: any) {
+            addToast(error.response?.data?.message || 'Error processing payout', 'error');
+        } finally {
+            isProcessingPayout.value = false;
+        }
+    };
+
+    // 4. Lifecycle Hooks
+    onMounted(() => {
+        window.addEventListener('keypress', handleScannerInput);
+    });
+
+    onUnmounted(() => {
+        window.removeEventListener('keypress', handleScannerInput);
+    });
 </script>
 
 <template>
+    <div style="display: none;">
+        <TicketReceipt 
+            v-if="currentTicket" 
+            ref="ticketComp" 
+            :ticket="currentTicket" 
+        />
+
+        <PayoutTicket 
+            v-if="currentPaidTicket" 
+            ref="payoutTicketRef" 
+            :ticket="currentPaidTicket" 
+        />
+    </div>
     <Toast />
+    <TicketModal 
+        v-if="scannedTicket" 
+        :ticket="scannedTicket" 
+        :status="scannedStatus" 
+        :can-payout="canClaim"
+        @close="scannedTicket = null"
+        @confirm="handlePayoutProcess"
+    />
     <Head title="Teller Dashboard" />
 
     <div class="h-[calc(100vh-80px)] p-4 bg-gray-100">

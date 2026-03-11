@@ -3,7 +3,7 @@ import { toasts } from '@/helpers/toast'
 </script>
 
 <template>
-  <div class="fixed bottom-5 right-5 flex flex-col gap-2 z-50">
+  <div class="fixed bottom-5 right-5 flex flex-col gap-2 z-999" style="z-index: 9999;">
     <div
       v-for="toast in toasts"
       :key="toast.id"

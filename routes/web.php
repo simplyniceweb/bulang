@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\GameMaster\DashboardController as GameMasterDashboardController;
 use App\Http\Controllers\GameMaster\RoundController;
+use App\Http\Controllers\Teller\BetController;
 use App\Http\Controllers\Teller\DashboardController as TellerDashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -21,6 +22,10 @@ Route::middleware(['auth', 'verified', 'teller'])
     ->group(function () {
         Route::get('/', [TellerDashboardController::class, 'index'])
             ->name('dashboard');
+
+        Route::post('/bet/{event}', [BetController::class, 'bet'])->name('bet.index');
+        Route::get('/bet/{code}/verify', [BetController::class, 'verify'])->name('bet.verify');
+        Route::post('/bet/{code}/claim', [BetController::class, 'claim'])->name('bet.claim');
 });
 
 Route::middleware(['auth', 'verified', 'game_master'])

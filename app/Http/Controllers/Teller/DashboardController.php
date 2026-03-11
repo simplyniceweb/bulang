@@ -22,7 +22,7 @@ class DashboardController extends Controller
                 ->latest('round_number')
                 ->first();
 
-            $rounds = Round::select('id', 'round_number', 'winner', 'status')
+            $rounds = Round::select('id', 'event_id', 'round_number', 'winner', 'status')
                         ->where('event_id', $event->id)
                         ->latest('round_number')
                         ->take(20)

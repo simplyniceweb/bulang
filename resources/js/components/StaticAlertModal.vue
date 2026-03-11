@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { alertState } from '@/composables/useAlert'
-import { useAlert } from '@/composables/useAlert'
+import { alertState, useAlert } from '@/composables/useAlert'
 
 const { closeAlert } = useAlert()
 

@@ -152,7 +152,7 @@
                 <div class="flex justify-between items-center">
                 <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ props.round.round_number ?? 0 }}</h2>
                 <p class="font-semibold">Status: 
-                    <span :class="props.round.round_status==='open'?'text-green-600':'text-red-600'">{{ props.round.round_status?.toUpperCase() }}</span>
+                    <span :class="props.round.status==='open'?'text-green-600':'text-red-600'">{{ props.round.status?.toUpperCase() }}</span>
                 </p>
                 </div>
                 <button

@@ -49,6 +49,7 @@ class HandleInertiaRequests extends Middleware
                 'round_number' => fn () => $request->session()->get('round_number'),
                 'round_status' => fn () => $request->session()->get('round_status'),
                 'no_modal' => fn () => $request->session()->get('no_modal'),
+                'newTicket' => fn () => $request->session()->get('newTicket'),
             ],
         ];
     }
