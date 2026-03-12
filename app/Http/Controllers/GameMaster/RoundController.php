@@ -22,13 +22,30 @@ class RoundController extends Controller
         $event = Event::cachedActive();
         $noModal = $request->noModal ?? false;
 
-        // Prevent multiple open rounds
-        if (Round::where('event_id', $event->id)
-            ->where('status', 'open')
-            ->exists()) {
+        // Check for any round that isn't fully "finished"
+        // A round is unfinished if it is 'open' OR if it's 'closed' but has no winner/result.
+        $unfinishedRound = Round::where('event_id', $event->id)
+            ->where(function ($query) {
+                $query->where('status', 'open')
+                        ->orWhere(function ($q) {
+                            $q->where('status', 'closed')
+                            ->where('betting_closed', true)
+                            ->whereNull('winner');
+                        });
+            })
+            ->first();
+
+        if ($unfinishedRound) {
+            if ($unfinishedRound->status === 'open') {
+                $message = "Round #{$unfinishedRound->round_number} is still open.";
+            } elseif ($unfinishedRound->betting_closed && is_null($unfinishedRound->winner)) {
+                $message = "Round #{$unfinishedRound->round_number} is waiting for a winner to be declared.";
+            } else {
+                $message = "The previous round is not yet finalized.";
+            }
 
             return back()->withErrors([
-                'round' => 'There is already an open round. Declare a winner or cancel this round before opening a new one.',
+                'round' => $message . ' Please resolve it before opening a new one.',
             ]);
         }
 

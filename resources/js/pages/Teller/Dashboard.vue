@@ -12,7 +12,6 @@
     import BetConfirm from './BetConfirm.vue'
     import PayoutTicket from './PayoutTicket.vue'
     import TicketReceipt from './Ticket.vue'
-    import { QZPrintService } from '@/services/qz-print.service'
 
     let echo = null as Echo<any> | null
     const cancellationReason = ref<string | null>(null)
@@ -47,14 +46,6 @@
     const roundStatus = computed(() => currentRound.value?.status)
     const roundNumber = computed(() => currentRound.value?.round_number)
     const remainingBalance = computed(() => balance.value - betAmount.value)
-
-    onMounted(() => {
-        initializeEcho()
-    })
-
-    onUnmounted(() => {
-        echo?.leave('rounds')
-    })
 
     // bet amount
     const betAmount = ref(0);
@@ -171,8 +162,7 @@
         side.value = selectedSide
         showConfirm.value = true
     }
-
-
+    
     const inputBuffer = ref("");
     const canClaim = ref(false);
     const currentTicket = ref(null);
@@ -301,12 +291,14 @@
 
     // 4. Lifecycle Hooks
     onMounted(() => {
-        window.addEventListener('keypress', handleScannerInput);
-    });
+        initializeEcho()
+        window.addEventListener('keypress', handleScannerInput)
+    })
 
     onUnmounted(() => {
-        window.removeEventListener('keypress', handleScannerInput);
-    });
+        echo?.leave('rounds')
+        window.removeEventListener('keypress', handleScannerInput)
+    })
 </script>
 
 <template>
@@ -327,7 +319,7 @@
     <TicketModal 
         v-if="scannedTicket" 
         :ticket="scannedTicket" 
-        :status="scannedStatus" 
+        :status="scannedStatus ?? ''" 
         :can-payout="canClaim"
         @close="scannedTicket = null"
         @confirm="handlePayoutProcess"

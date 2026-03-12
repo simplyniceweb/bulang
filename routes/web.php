@@ -4,17 +4,12 @@ use App\Http\Controllers\Admin\EventController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\GameMaster\DashboardController as GameMasterDashboardController;
 use App\Http\Controllers\GameMaster\RoundController;
+use App\Http\Controllers\HomepageController;
 use App\Http\Controllers\Teller\BetController;
 use App\Http\Controllers\Teller\DashboardController as TellerDashboardController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-    ]);
-})->name('home');
+Route::get('/', [HomepageController::class, 'index'])->name('home');
 
 Route::middleware(['auth', 'verified', 'teller'])
     ->prefix('teller')

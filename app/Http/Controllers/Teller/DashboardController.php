@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Teller;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
