@@ -74,8 +74,6 @@ class Round extends Model
             'draw_total' => (float)$totalDraw,
             'meron_payout' => round($meronPayout, 2),
             'wala_payout'  => round($walaPayout, 2),
-            'meron_odds'   => $totalMeron > 0 ? round($netPool / $totalMeron, 2) : 0,
-            'wala_odds'    => $totalWala > 0 ? round($netPool / $totalWala, 2) : 0,
             'draw_multiplier' => 7, // Fixed as per your request
         ];
     }

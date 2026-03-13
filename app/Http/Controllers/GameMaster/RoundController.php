@@ -66,7 +66,7 @@ class RoundController extends Controller
 
         });
 
-         broadcast(new RoundOpened($newRound));
+        broadcast(new RoundOpened($newRound));
 
         return back()->with([
             'success' => 'Round opened successfully.', 

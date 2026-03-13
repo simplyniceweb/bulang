@@ -3,10 +3,11 @@
     import axios from 'axios';
     import Echo from 'laravel-echo'
     import { CircleUserRound } from 'lucide-vue-next'
-    import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
+    import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
     import ConfirmModal from '@/components/ConfirmModal.vue'
     import TicketModal from '@/components/TicketModal.vue'
     import Toast from '@/components/Toast.vue'
+    import { formatNumber } from '@/helpers/format'
     import { addToast } from '@/helpers/toast'
     import { route } from 'ziggy-js';
     import BetConfirm from './BetConfirm.vue'
@@ -46,6 +47,21 @@
     const roundStatus = computed(() => currentRound.value?.status)
     const roundNumber = computed(() => currentRound.value?.round_number)
     const remainingBalance = computed(() => balance.value - betAmount.value)
+
+    const initialStats = {
+        meron_total: 0,
+        wala_total: 0,
+        draw_total: 0,
+        meron_payout: 0,
+        wala_payout: 0,
+        draw_multiplier: 7 // Keep your default multiplier
+    };
+
+    const sumStats = ref(props.round?.payout_details || {...initialStats});
+
+    watch(() => props.round?.payout_details, (newVal) => {
+        if (newVal) sumStats.value = newVal;
+    }, { deep: true });
 
     // bet amount
     const betAmount = ref(0);
@@ -88,6 +104,11 @@
     function updateRoundState(round: any, reason: string | null = null) {
         currentRound.value = round
 
+        if (reason === 'reset') {
+            sumStats.value = { ...initialStats };
+            addToast('Round opened successfully.', 'success')
+        }
+
         const index = rounds.value.findIndex(r => r.id === round.id)
 
         if (index !== -1) {
@@ -115,12 +136,9 @@
         })
 
         const events: Record<string, (event: any) => void> = {
-            '.round.opened': e => updateRoundState(e.round),
-
+            '.round.opened': e => updateRoundState(e.round, 'reset'),
             '.round.closed': e => updateRoundState(e.round),
-
             '.round.cancelled': e => updateRoundState(e.round, e.reason),
-
             '.round.declare': e => {
                 updateRoundState(e.round)
                 addToast(
@@ -128,15 +146,17 @@
                     'success'
                 )
             },
-
             '.round.side.closed': e => {
                 updateRoundState(e.round)
                 addToast(`${e.side.toUpperCase()} betting closed`, 'error')
             },
-
             '.round.side.reopened': e => {
                 updateRoundState(e.round)
                 addToast(`${e.side.toUpperCase()} betting reopened`, 'success')
+            },
+            '.round.bet_placed': e => {
+                console.log(e.round.round_id + ' bet placed.')
+                sumStats.value = e.payouts;
             }
         }
 
@@ -417,12 +437,17 @@
                 :disabled="walaClosed"
                 :class="[
                     'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
-                    !walaClosed 
+                    (!walaClosed && roundStatus === 'open')
                     ? 'bg-blue-600 hover:bg-blue-700 active:scale-95 cursor-pointer' 
                     : 'bg-blue-400 cursor-not-allowed opacity-50'
                 ]">
                 <span>WALA</span>
-                <span v-if="walaClosed" class="block text-xs mt-1">(CLOSED)</span>
+                <span v-if="roundStatus !== 'open'" class="block text-xs mt-1">
+                    (BETTING CLOSED)
+                </span>
+                <span v-else-if="walaClosed" class="block text-xs mt-1">
+                    (SIDE CLOSED)
+                </span>
             </button>
 
             <button
@@ -430,13 +455,18 @@
                 :disabled="drawClosed"
                 :class="[
                     'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
-                    !drawClosed 
+                    (!drawClosed && roundStatus === 'open')
                     ? 'bg-yellow-600 hover:bg-yellow-700 active:scale-95 cursor-pointer' 
                     : 'bg-yellow-400 cursor-not-allowed opacity-50'
                 ]"
                 >
                 <span>DRAW</span>
-                <span v-if="drawClosed" class="block text-xs mt-1">(CLOSED)</span>
+                <span v-if="roundStatus !== 'open'" class="block text-xs mt-1">
+                    (BETTING CLOSED)
+                </span>
+                <span v-else-if="drawClosed" class="block text-xs mt-1">
+                    (SIDE CLOSED)
+                </span>
             </button>
 
             <button
@@ -444,14 +474,20 @@
                 :disabled="meronClosed"
                 :class="[
                     'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
-                    !meronClosed 
+                    (!meronClosed && roundStatus === 'open')
                     ? 'bg-red-600 hover:bg-red-700 active:scale-95 cursor-pointer' 
                     : 'bg-red-400 cursor-not-allowed opacity-50'
                 ]"
                 >
                 <span>MERON</span>
-                <span v-if="meronClosed" class="block text-xs mt-1">(CLOSED)</span>
+                <span v-if="roundStatus !== 'open'" class="block text-xs mt-1">
+                    (BETTING CLOSED)
+                </span>
+                <span v-else-if="meronClosed" class="block text-xs mt-1">
+                    (SIDE CLOSED)
+                </span>
             </button>
+
             <BetConfirm
                 :visible="showConfirm"
                 :loading="isSubmitting"
@@ -505,29 +541,29 @@
             <p class="font-semibold mb-2">Current Round Totals</p>
 
             <div class="flex justify-between">
-                <span class="text-red-600 font-medium">MERON (2.475)</span>
-                <span class="font-bold">₱2,000</span>
-                <span v-if="meronClosed" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
+                <span class="text-red-600 font-medium">MERON ({{ sumStats.meron_payout }})</span>
+                <span class="font-bold">₱{{ formatNumber(sumStats.meron_total, 0) }}</span>
+                <span v-if="meronClosed || roundStatus !== 'open'" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
                 <span v-else class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">OPEN</span>
             </div>
 
             <div class="flex justify-between">
                 <span class="text-yellow-600 font-medium">DRAW (1.7)</span>
-                <span class="font-bold">₱500</span>
-                <span v-if="drawClosed" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
+                <span class="font-bold">₱{{ formatNumber(sumStats.draw_total, 0) }}</span>
+                <span v-if="drawClosed || roundStatus !== 'open'" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
                 <span v-else class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">OPEN</span>
             </div>
 
             <div class="flex justify-between">
-                <span class="text-green-600 font-medium">WALA (1.65)</span>
-                <span class="font-bold">₱3,000</span>
-                <span v-if="walaClosed" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
+                <span class="text-green-600 font-medium">WALA ({{ sumStats.wala_payout }})</span>
+                <span class="font-bold">₱{{ formatNumber(sumStats.wala_total, 0) }}</span>
+                <span v-if="walaClosed || roundStatus !== 'open'" class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">CLOSED</span>
                 <span v-else class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full font-semibold">OPEN</span>
             </div>
 
             <div class="flex justify-between border-t pt-2 font-semibold">
                 <span>Total</span>
-                <span>₱5,500</span>
+                <span>₱ {{ formatNumber(sumStats.meron_total + sumStats.wala_total + sumStats.draw_total) }}</span>
             </div>
         </div>
 
@@ -537,8 +573,18 @@
             <ul class="space-y-2 text-sm">
                 <li v-for="item in rounds" :key="item.id" class="flex justify-between bg-gray-50 p-2 rounded-lg">
                     <span>#{{ item.round_number }}</span>
-                    <span :class="{'text-indigo-600': item.winner==='wala','text-red-600': item.winner==='meron','text-yellow-500': item.winner==='draw','text-gray-500': !item.winner}" class="font-bold">
-                        {{ item.winner ? item.winner?.toUpperCase() : '---' }} / {{ item.status.toUpperCase() }}
+                    <span 
+                        :class="{
+                            'text-red-600': item.winner === 'meron',
+                            'text-indigo-600': item.winner === 'wala',
+                            'text-yellow-500': item.winner === 'draw',
+                            'text-green-500': !item.winner && item.status === 'open',
+                            'text-orange-500': !item.winner && item.status === 'cancelled',
+                            'text-gray-500': !item.winner && item.status !== 'open' && item.status !== 'cancelled'
+                        }" 
+                        class="font-bold"
+                    >
+                        {{ (item.winner || item.status).toUpperCase() }}
                     </span>
                 </li>
             </ul>

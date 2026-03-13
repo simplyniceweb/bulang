@@ -1,16 +1,17 @@
 <script setup lang="ts">
-    import { router } from '@inertiajs/vue3';
-    import { CircleUserRound } from 'lucide-vue-next';
-    import { ref } from 'vue';
+    import { router } from '@inertiajs/vue3'
+    import Echo from 'laravel-echo'
+    import { CircleUserRound } from 'lucide-vue-next'
+    import { ref, watch, onMounted, onUnmounted } from 'vue'
     import AlertModal from '@/components/AlertModal.vue'
     import ConfirmModal from '@/components/ConfirmModal.vue'
     import StaticAlertModal from '@/components/StaticAlertModal.vue'
     import Toast from '@/components/Toast.vue'
     import { useAlert } from '@/composables/useAlert'
     import { useFlashAlert } from '@/composables/useFlashAlert'
-    import { formatNumber } from '@/helpers/format';
-    import { addToast } from '@/helpers/toast';
-    import { route } from 'ziggy-js';
+    import { formatNumber } from '@/helpers/format'
+    import { addToast } from '@/helpers/toast'
+    import { route } from 'ziggy-js'
 
     const confirmModal = ref(false)
     const confirmMessage = ref('')
@@ -20,10 +21,10 @@
     const { showAlert } = useAlert()
 
     const {
-    show,
-    message,
-    type,
-    close
+        show,
+        message,
+        type,
+        close
     } = useFlashAlert()
 
     const props = defineProps<{
@@ -31,6 +32,65 @@
         round: any,
         rounds: any[],
     }>()
+
+    let echo = null as Echo<any> | null
+
+    const initialStats = {
+        meron_total: 0,
+        wala_total: 0,
+        draw_total: 0,
+        meron_payout: 0,
+        wala_payout: 0,
+        draw_multiplier: 7 // Keep your default multiplier
+    };
+
+    const sumStats = ref(props.round?.payout_details || {...initialStats});
+
+    watch(() => props.round?.payout_details, (newVal) => {
+        if (newVal) sumStats.value = newVal;
+    }, { deep: true });
+
+
+    function initializeEcho() {
+        echo = new Echo({
+            broadcaster: 'reverb',
+            key: import.meta.env.VITE_REVERB_APP_KEY,
+            wsHost: import.meta.env.VITE_REVERB_HOST,
+            wsPort: import.meta.env.VITE_REVERB_PORT,
+            wssPort: import.meta.env.VITE_REVERB_PORT,
+            forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+            enabledTransports: ['ws', 'wss'],
+        })
+
+        echo.connector.pusher.connection.bind('connected', () => {
+            console.log('Reverb connected')
+        })
+
+        const events: Record<string, (event: any) => void> = {
+            '.round.opened': e => {
+                console.log(e.round.round_id + ' is the new round.')
+                sumStats.value = { ...initialStats };
+            },
+            '.round.bet_placed': e => {
+                console.log(e.round.round_id + ' bet placed.')
+                sumStats.value = e.payouts;
+            }
+        }
+
+        const channel = echo.channel('rounds')
+
+        Object.entries(events).forEach(([event, handler]) => {
+            channel.listen(event, handler)
+        })
+    }
+
+    onMounted(() => {
+        initializeEcho()
+    })
+
+    onUnmounted(() => {
+        echo?.leave('rounds')
+    })
 
     function startRound() {
         confirmAndPost(
@@ -191,9 +251,9 @@
                 </div>
 
                 <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
-                    <div class="text-indigo-600 text-sm">WALA<br><span class="text-lg">{{ formatNumber(124512) }}</span></div>
-                    <div class="text-yellow-600 text-sm">DRAW<br><span class="text-lg">{{ formatNumber(8612) }}</span></div>
-                    <div class="text-red-600 text-sm">MERON<br><span class="text-lg">{{ formatNumber(23512) }}</span></div>
+                    <div class="text-indigo-600 text-sm">WALA<br><span class="text-sm">({{ sumStats.meron_payout }})</span><br><span class="text-lg">₱{{ formatNumber(sumStats.meron_total, 0)}}</span></div>
+                    <div class="text-yellow-600 text-sm">DRAW<br><span class="text-sm">(1-7)</span><br><span class="text-lg">₱{{ formatNumber(sumStats.draw_total, 0)}}</span></div>
+                    <div class="text-red-600 text-sm">MERON<br><span class="text-sm">({{ sumStats.wala_payout }})</span><br><span class="text-lg">₱{{ formatNumber(sumStats.wala_total, 0)}}</span></div>
                 </div>
                 </div>
 
@@ -266,9 +326,19 @@
         <div class="flex-1 overflow-y-auto space-y-4">
             <div v-for="item in rounds" :key="item.id" class="border rounded-lg p-3 hover:bg-gray-50">
             <div class="flex justify-between items-center mb-2">
-                <span class="font-bold">Round #{{ item.id }}</span>
-                <span :class="{'text-indigo-600': item.winner==='wala','text-red-600': item.winner==='meron','text-yellow-500': item.winner==='draw','text-gray-500': !item.winner}" class="font-bold">
-                    {{ item.winner ? item.winner?.toUpperCase() : '---' }} / {{ item.status.toUpperCase() }}
+                <span class="font-bold">Round #{{ item.round_number }}</span>
+                <span 
+                    :class="{
+                        'text-red-600': item.winner === 'meron',
+                        'text-indigo-600': item.winner === 'wala',
+                        'text-yellow-500': item.winner === 'draw',
+                        'text-green-500': !item.winner && item.status === 'open',
+                        'text-orange-500': !item.winner && item.status === 'cancelled',
+                        'text-gray-500': !item.winner && item.status !== 'open' && item.status !== 'cancelled'
+                    }" 
+                    class="font-bold"
+                >
+                    {{ (item.winner || item.status).toUpperCase() }}
                 </span>
             </div>
             </div>
