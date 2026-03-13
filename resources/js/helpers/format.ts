@@ -21,12 +21,12 @@ export function formatCurrency(value: number): string {
   return value.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0 })
 }
 
-export function formatNumber(value: string | number): string {
+export function formatNumber(value: string | number, fraction: number = 2): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   
   return new Intl.NumberFormat('en-PH', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: fraction ?? 2,
+    maximumFractionDigits: fraction ?? 2,
   }).format(num || 0);
 }
 

@@ -163,15 +163,18 @@
         showConfirm.value = true
     }
     
-    const inputBuffer = ref("");
-    const canClaim = ref(false);
-    const currentTicket = ref(null);
-    const isVerifying = ref(false);
-    const scannedTicket = ref(null as string | null);
-    const scannedStatus = ref(null as string | null);
-    const ticketComp = ref<InstanceType<typeof TicketReceipt> | null>(null);
+    const inputBuffer = ref("")
+    const canClaim = ref(false)
+    const currentTicket = ref(null)
+    const isVerifying = ref(false)
+    const isSubmitting = ref(false)
+    const scannedTicket = ref(null as string | null)
+    const scannedStatus = ref(null as string | null)
+    const ticketComp = ref<InstanceType<typeof TicketReceipt> | null>(null)
 
     function confirmBet() {
+
+        if (isSubmitting.value) return
 
         if (betAmount.value <= 0) {
             addToast('Enter a valid bet amount.', 'error')
@@ -179,10 +182,11 @@
         }
 
         if (betAmount.value > balance.value) {
-            addToast('Insufficient balance.', 'error')
-            return
+            // addToast('Insufficient balance.', 'error')
+            // return
         }
 
+        isSubmitting.value = true
         balance.value -= betAmount.value
 
         router.post(
@@ -197,20 +201,25 @@
                     const newTicket = (usePage().props.flash as Record<string, any>).newTicket;
                     if (newTicket) {
                         currentTicket.value = newTicket
-                        nextTick(() => {
-                            ticketComp.value?.printReceipt()
-                        })
+                        // nextTick(() => {
+                        //     ticketComp.value?.printReceipt()
+                        // })
+                        addToast('Bet confirmed and printing...', 'success')
                     } else {
                         addToast('Bet placed but failed to retrieve ticket for printing.', 'error')
                     }
 
-                    addToast('Bet confirmed and printing...', 'success');
                     betAmount.value = 0
                     showConfirm.value = false
+                    isSubmitting.value = false
                 },
                 onError: () => {
                     addToast('Failed to place bet. Please try again.', 'error')
                     balance.value += betAmount.value
+                    isSubmitting.value = false
+                },
+                onFinish: () => {
+                    isSubmitting.value = false
                 }
             }
         )
@@ -445,6 +454,7 @@
             </button>
             <BetConfirm
                 :visible="showConfirm"
+                :loading="isSubmitting"
                 :amount="betAmount"
                 :side="side"
                 :remaining-balance="remainingBalance"

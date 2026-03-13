@@ -2,7 +2,8 @@
     import Echo from 'laravel-echo'
     import { computed, ref, onMounted, onUnmounted } from 'vue'
     import Toast from '@/components/Toast.vue'
-    import { formatDate, tellerClock } from '@/helpers/time';
+    import { formatNumber } from '@/helpers/format'
+    import { formatDate, tellerClock } from '@/helpers/time'
     import { addToast } from '@/helpers/toast'
 
     type Side = 'meron' | 'wala' | 'draw'
@@ -46,6 +47,17 @@
     const roundNumber = computed(() => currentRound.value?.round_number)
     const cancellationReason = ref<string | null>(null)
     const localStats = ref({ ...props.stats });
+    const sumStats = computed(() => {
+        return props.round?.payout_details || {
+            meron_total: 0,
+            wala_total: 0,
+            draw_total: 0,
+            meron_payout: 0,
+            wala_payout: 0,
+            meron_odds: 0,
+            wala_odds: 0
+        };
+    });
 
     function updateRoundState(round: any, reason: string | null = null, skip: boolean) {
         currentRound.value = round
@@ -170,23 +182,23 @@
             <div class="text-4xl font-black text-center">MERON</div>
             <div class="mt-6 text-center">
                 <div class="text-3xl md:text-4xl font-black uppercase">TEAM MERON</div>
-                <div class="text-2xl mt-2 font-bold opacity-90">1.85</div>
+                <div class="text-2xl mt-2 font-bold opacity-90">{{ sumStats.meron_odds }}</div>
             </div>
             </div>
 
             <div class="text-center mt-8 space-y-2">
             <div class="text-2xl md:text-3xl bg-red-700/50 py-1 rounded">1-0-0-1</div>
-            <div class="text-4xl md:text-5xl font-black">117,933</div>
+            <div class="text-4xl md:text-5xl font-black">{{ formatNumber(sumStats.meron_total, 0) }}</div>
             <div class="bg-red-800/40 p-4 rounded-b-lg border-t border-red-400/30">
                 <div class="text-xl font-bold">PAYOUT</div>
-                <div class="text-3xl md:text-4xl font-bold">183.29</div>
+                <div class="text-3xl md:text-4xl font-bold">{{ sumStats.meron_payout }}</div>
             </div>
             </div>
         </div>
 
         <div class="order-2 lg:col-span-2 bg-yellow-400 text-black rounded-lg p-6 flex flex-col justify-center items-center min-h-37.5 lg:min-h-full">
             <div class="text-3xl lg:text-4xl font-bold text-yellow-900">DRAW</div>
-            <div class="text-4xl font-black mt-2">800</div>
+            <div class="text-4xl font-black mt-2">{{ formatNumber(sumStats.draw_total, 0) }}</div>
             <div class="mt-4 text-2xl bg-yellow-500/30 py-2 w-full text-center font-bold rounded">1 - 7</div>
         </div>
 
@@ -201,10 +213,10 @@
 
             <div class="text-center mt-8 space-y-2">
             <div class="text-2xl md:text-3xl bg-blue-700/50 py-1 rounded">0-0-1-1</div>
-            <div class="text-4xl md:text-5xl font-black">110,094</div>
+            <div class="text-4xl md:text-5xl font-black">{{ formatNumber(sumStats.wala_total, 0) }}</div>
             <div class="bg-blue-800/40 p-4 rounded-b-lg border-t border-blue-400/30">
                 <div class="text-xl font-bold">PAYOUT</div>
-                <div class="text-3xl md:text-4xl font-bold">196.35</div>
+                <div class="text-3xl md:text-4xl font-bold">{{ sumStats.wala_payout }}</div>
             </div>
             </div>
         </div>

@@ -13,10 +13,14 @@ interface Props {
   visible: boolean
   amount: number
   side: 'meron' | 'wala' | 'draw'
-  remainingBalance: number
+  remainingBalance: number,
+  loading?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  loading: false
+})
+
 const emit = defineEmits<{
   (e: 'confirm'): void
   (e: 'cancel'): void
@@ -32,12 +36,18 @@ const sideClass = computed(() => {
 })
 
 const confirm = () => emit('confirm')
-const cancel = () => emit('cancel')
+const cancel = () => {
+  if (props.loading) return
+  emit('cancel')
+}
 </script>
 
 <template>
-  <Dialog :open="props.visible" @openChange="(val: any) => !val && cancel()">
-    <DialogContent class="max-w-md p-6 rounded-2xl">
+  <Dialog :open="props.visible" @update:open="(val) => !val && cancel()">
+    <DialogContent 
+        class="max-w-md p-6 rounded-2xl"
+        @interactOutside="(e) => loading && e.preventDefault()"
+        @escapeKeyDown="(e) => loading && e.preventDefault()">
       <DialogHeader class="text-center">
         <DialogTitle class="text-xl font-bold text-gray-900">
           Confirm Your Bet
@@ -70,6 +80,7 @@ const cancel = () => emit('cancel')
       <DialogFooter class="mt-6 flex gap-4">
         <button
           @click="cancel"
+          :disabled="loading"
           class="flex-1 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100 transition font-semibold"
         >
           Cancel
@@ -77,9 +88,11 @@ const cancel = () => emit('cancel')
 
         <button
           @click="confirm"
+          :disabled="loading"
           class="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition"
         >
-          Confirm
+            <span v-if="loading" class="animate-spin">⏳</span>
+            {{ loading ? 'Processing...' : 'Confirm' }}
         </button>
       </DialogFooter>
     </DialogContent>
