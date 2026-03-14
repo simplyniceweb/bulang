@@ -256,7 +256,7 @@
             <div class="text-4xl md:text-5xl font-black">₱ {{ formatNumber(sumStats.meron_total, 0) }}</div>
             <div class="bg-red-800/40 p-4 rounded-b-lg border-t border-red-400/30">
                 <div class="text-xl font-bold">PAYOUT</div>
-                <div class="text-3xl md:text-4xl font-bold">{{ sumStats.meron_payout }}</div>
+                <div class="text-4xl font-bold">{{ sumStats.meron_payout }}</div>
             </div>
             </div>
         </div>
@@ -281,7 +281,7 @@
             <div class="text-4xl md:text-5xl font-black">₱ {{ formatNumber(sumStats.wala_total, 0) }}</div>
             <div class="bg-blue-800/40 p-4 rounded-b-lg border-t border-blue-400/30">
                 <div class="text-xl font-bold">PAYOUT</div>
-                <div class="text-3xl md:text-4xl font-bold">{{ sumStats.wala_payout }}</div>
+                <div class="text-4xl font-bold">{{ sumStats.wala_payout }}</div>
             </div>
             </div>
         </div>
