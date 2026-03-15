@@ -68,6 +68,7 @@ import AlertModal from '@/components/AlertModal.vue'
 import { useFlashAlert } from '@/composables/useFlashAlert'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { route } from 'ziggy-js';
 
 const {
   show,
@@ -84,7 +85,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 // Inertia form helper
 const form = useForm({
     name: '',
-    house_percent: 10,
+    house_percent: 6,
     status: 'inactive',
 });
 

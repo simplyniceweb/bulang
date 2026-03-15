@@ -8,6 +8,7 @@ use App\Http\Controllers\HomepageController;
 use App\Http\Controllers\Teller\BetController;
 use App\Http\Controllers\Teller\DashboardController as TellerDashboardController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', [HomepageController::class, 'index'])->name('home');
 

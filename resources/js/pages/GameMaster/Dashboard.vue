@@ -68,11 +68,11 @@
 
         const events: Record<string, (event: any) => void> = {
             '.round.opened': e => {
-                console.log(e.round.round_id + ' is the new round.')
+                console.log(e.round.id + ' is the new round.')
                 sumStats.value = { ...initialStats };
             },
             '.round.bet_placed': e => {
-                console.log(e.round.round_id + ' bet placed.')
+                console.log(e.round + ' bet placed.')
                 sumStats.value = e.payouts;
             }
         }
@@ -177,7 +177,7 @@
 
         confirmAction.value = () => {
             router.post(
-                route(routeName, props.round.id),
+                route(routeName, props.round?.id),
                 { ...payload, noModal: true },
                 {
                     onSuccess: (page: any) => {
@@ -210,9 +210,9 @@
             <div class="flex flex-col gap-4 border-b pb-6">
                 <h1 class="text-4xl font-bold text-black">{{ props.event.name ?? 'Test Event' }}</h1>
                 <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ props.round.round_number ?? 0 }}</h2>
+                <h2 class="text-xl font-bold text-gray-900">Current Round: #{{ props.round ? props.round?.round_number : '---' }}</h2>
                 <p class="font-semibold">Status: 
-                    <span :class="props.round.status==='open'?'text-green-600':'text-red-600'">{{ props.round.status?.toUpperCase() }}</span>
+                    <span :class="props.round?.status==='open'?'text-green-600':'text-red-600'">{{ props.round?.status.toUpperCase() }}</span>
                 </p>
                 </div>
                 <button
@@ -251,9 +251,21 @@
                 </div>
 
                 <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
-                    <div class="text-indigo-600 text-sm">WALA<br><span class="text-sm">({{ sumStats.meron_payout }})</span><br><span class="text-lg">₱{{ formatNumber(sumStats.meron_total, 0)}}</span></div>
-                    <div class="text-yellow-600 text-sm">DRAW<br><span class="text-sm">(1-7)</span><br><span class="text-lg">₱{{ formatNumber(sumStats.draw_total, 0)}}</span></div>
-                    <div class="text-red-600 text-sm">MERON<br><span class="text-sm">({{ sumStats.wala_payout }})</span><br><span class="text-lg">₱{{ formatNumber(sumStats.wala_total, 0)}}</span></div>
+                    <div class="text-indigo-600 text-sm">
+                        WALA<br>
+                        <span class="text-sm">({{ sumStats.meron_payout > 0 ? sumStats.meron_payout : '---' }})</span><br>
+                        <span class="text-lg">{{ sumStats.meron_total > 0 ? formatNumber(sumStats.meron_total, 0) : '---'}}</span>
+                    </div>
+                    <div class="text-yellow-600 text-sm">
+                        DRAW<br>
+                        <span class="text-sm">(1-7)</span><br>
+                        <span class="text-lg">{{ sumStats.draw_total > 0 ? formatNumber(sumStats.draw_total, 0) : '---'}}</span>
+                    </div>
+                    <div class="text-red-600 text-sm">
+                        MERON<br>
+                        <span class="text-sm">({{ sumStats.wala_payout > 0 ? sumStats.wala_payout : '---' }})</span><br>
+                        <span class="text-lg">{{ sumStats.wala_total > 0 ? formatNumber(sumStats.wala_total, 0) : '---'}}</span>
+                    </div>
                 </div>
                 </div>
 

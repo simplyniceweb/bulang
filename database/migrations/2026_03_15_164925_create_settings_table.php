@@ -11,17 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('events', function (Blueprint $table) {
+        Schema::create('settings', function (Blueprint $table) {
             $table->id();
+            $table->string('title');
             $table->string('name');
-            $table->decimal('house_percent', 5, 2)->default(6.00);
-            $table->enum('status', ['inactive', 'active', 'closed'])->default('inactive');
-            $table->dateTime('started_at')->nullable();
-            $table->dateTime('ended_at')->nullable();
             $table->timestamps();
-
-            $table->index('status');
-            $table->softDeletes();
         });
     }
 
@@ -30,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('events');
+        Schema::dropIfExists('settings');
     }
 };

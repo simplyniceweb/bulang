@@ -81,9 +81,17 @@ defineExpose({ printReceipt });
             <span>TELLER:</span> 
             <strong style="text-transform: uppercase;">{{ ticket.teller?.name }}</strong>
         </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+            <span>BET:</span> 
+            <strong style="text-transform: uppercase;">{{ ticket.amount }}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+            <span>ODDS:</span> 
+            <strong style="text-transform: uppercase;">{{ ticket.odds }}</strong>
+        </div>
         <div style="border-top: 1px dashed black; margin-top: 5px; padding-top: 5px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between;">
             <span>PAID:</span>
-            <span>₱{{ formatNumber(ticket.potential_payout) }}</span>
+            <span>{{ formatNumber(ticket.potential_payout) }}</span>
         </div>
 
         <div style="font-size: 10px; margin-top: 10px; border-top: 1px solid black; padding-top: 5px; text-align: center;">

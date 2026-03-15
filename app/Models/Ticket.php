@@ -23,6 +23,8 @@ class Ticket extends Model
     ];
 
     protected $casts = [
+        'odds' => 'decimal:3',
+        'potential_payout' => 'decimal:2',
         'claimed_at' => 'datetime',
     ];
 

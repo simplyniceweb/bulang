@@ -70,6 +70,7 @@ import AlertModal from '@/components/AlertModal.vue'
 import { useFlashAlert } from '@/composables/useFlashAlert'
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { route } from 'ziggy-js';
 
 const {
   show,

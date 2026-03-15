@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Teller;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Round;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,8 +14,6 @@ class BetController extends Controller
 {
     public function bet(Event $event, Request $request)
     {
-        // dd($event->id, $request->input('side'), $request->input('amount'), $request->input('round_id'));
-        
         $request->validate([
             'side' => 'required|in:meron,wala,draw',
             'amount' => 'required|numeric|min:100',
@@ -31,7 +30,7 @@ class BetController extends Controller
             ], 403);
         }
 
-        $ticket = DB::transaction(function () use ($event, $roundId, $side, $amount) {
+        $ticket = DB::transaction(function () use ($event, $roundId, $side, $amount) {            
             $ticket = new Ticket();
             $ticket->ticket_number = 'TEMP-' . Str::random(10);
             $ticket->event_id = $event->id;
@@ -39,12 +38,25 @@ class BetController extends Controller
             $ticket->teller_id = auth()->id();
             $ticket->side = $side;
             $ticket->amount = $amount;
-            $ticket->odds = mt_rand(150, 250) / 100; // Current odds at time of bet
-            $ticket->potential_payout = $amount * $ticket->odds;
+            $ticket->odds = 1;
+            $ticket->potential_payout = 0;
             $ticket->save();
 
+            // recalculate odds
+            $round = Round::where('id', $roundId)->lockForUpdate()->firstOrFail();
+            $payouts = $round->payout_details;
+
+            $currentOdds = ($side === 'meron') ? $payouts['meron_payout'] : $payouts['wala_payout'];
+            if ($side === 'draw') {
+                $currentOdds = $payouts['draw_multiplier'];
+            }
+
+            $ticketOdds = $currentOdds / 100;
+            
             $ticket->update([
-                'ticket_number' => $ticket->round_id . '-' . $ticket->id . '-' . strtoupper(Str::random(4))
+                'ticket_number' => $event->id. '-' . $ticket->round_id . '-' . $ticket->id . '-' . strtoupper(Str::random(4)),
+                'odds' => $ticketOdds, // Current odds at time of bet
+                'potential_payout' => $ticket->amount * $ticketOdds
             ]);
 
             return $ticket;

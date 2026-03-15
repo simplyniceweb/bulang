@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import StaticAlertModal from '@/components/StaticAlertModal.vue';
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItem } from '@/types';
 

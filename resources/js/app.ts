@@ -12,7 +12,7 @@ configureEcho({
 
 import { initializeTheme } from './composables/useAppearance';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Bulang';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

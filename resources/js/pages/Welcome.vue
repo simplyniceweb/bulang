@@ -6,6 +6,8 @@
     import { formatDate, tellerClock } from '@/helpers/time'
     import { addToast } from '@/helpers/toast'
 
+    const appName = import.meta.env.VITE_APP_NAME || 'Bulang';
+
     type Side = 'meron' | 'wala' | 'draw'
 
     const colors: Record<string, string> = {
@@ -135,7 +137,7 @@
                 }, 10000);
             },
             '.round.bet_placed': e => {
-                console.log(e.round.round_id + ' bet placed.')
+                console.log(e.round + ' bet placed.')
                 sumStats.value = e.payouts;
             }
         }
@@ -220,7 +222,7 @@
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div class="text-xl md:text-2xl font-bold tracking-wide text-center md:text-left">
-            GALERA DE NATO [ {{ props.event?.name }} ] | {{ formatDate(new Date()) }}
+            {{ appName }} [ {{ props.event?.name }} ] | {{ formatDate(new Date()) }}
         </div>
 
         <div class="flex flex-col items-center md:items-end">
@@ -252,18 +254,18 @@
             </div>
 
             <div class="text-center mt-8 space-y-2">
-            <div class="text-2xl md:text-3xl bg-red-700/50 py-1 rounded">1-0-0-1</div>
-            <div class="text-4xl md:text-5xl font-black">₱ {{ formatNumber(sumStats.meron_total, 0) }}</div>
+            <div class="text-2xl md:text-3xl bg-red-700/50 py-1 rounded hidden">1-0-0-1</div>
+            <div class="text-4xl md:text-5xl font-black">{{ sumStats.meron_total > 0 ? formatNumber(sumStats.meron_total, 0) : '---' }}</div>
             <div class="bg-red-800/40 p-4 rounded-b-lg border-t border-red-400/30">
                 <div class="text-xl font-bold">PAYOUT</div>
-                <div class="text-4xl font-bold">{{ sumStats.meron_payout }}</div>
+                <div class="text-5xl md:text-5xl font-black">{{ sumStats.meron_payout > 0 ? sumStats.meron_payout : '---' }}</div>
             </div>
             </div>
         </div>
 
         <div class="order-2 lg:col-span-2 bg-yellow-400 text-black rounded-lg p-6 flex flex-col justify-center items-center min-h-37.5 lg:min-h-full">
             <div class="text-3xl lg:text-4xl font-bold text-yellow-900">DRAW</div>
-            <div class="text-4xl font-black mt-2">₱ {{ formatNumber(sumStats.draw_total, 0) }}</div>
+            <div class="text-4xl font-black mt-2">{{ sumStats.draw_total > 0 ? formatNumber(sumStats.draw_total, 0) : '---' }}</div>
             <div class="mt-4 text-2xl bg-yellow-500/30 py-2 w-full text-center font-bold rounded">1 - 7</div>
         </div>
 
@@ -277,11 +279,11 @@
             </div>
 
             <div class="text-center mt-8 space-y-2">
-            <div class="text-2xl md:text-3xl bg-blue-700/50 py-1 rounded">0-0-1-1</div>
-            <div class="text-4xl md:text-5xl font-black">₱ {{ formatNumber(sumStats.wala_total, 0) }}</div>
+            <div class="text-2xl md:text-3xl bg-blue-700/50 py-1 rounded hidden">0-0-1-1</div>
+            <div class="text-4xl md:text-5xl font-black">{{ sumStats.wala_total  > 0 ? formatNumber(sumStats.wala_total, 0) : '---' }}</div>
             <div class="bg-blue-800/40 p-4 rounded-b-lg border-t border-blue-400/30">
                 <div class="text-xl font-bold">PAYOUT</div>
-                <div class="text-4xl font-bold">{{ sumStats.wala_payout }}</div>
+                <div class="text-5xl md:text-5xl font-black">{{ sumStats.wala_payout > 0 ? sumStats.wala_payout : '---' }}</div>
             </div>
             </div>
         </div>

@@ -155,7 +155,7 @@
                 addToast(`${e.side.toUpperCase()} betting reopened`, 'success')
             },
             '.round.bet_placed': e => {
-                console.log(e.round.round_id + ' bet placed.')
+                console.log(e.round + ' bet placed.')
                 sumStats.value = e.payouts;
             }
         }
@@ -221,9 +221,9 @@
                     const newTicket = (usePage().props.flash as Record<string, any>).newTicket;
                     if (newTicket) {
                         currentTicket.value = newTicket
-                        // nextTick(() => {
-                        //     ticketComp.value?.printReceipt()
-                        // })
+                        nextTick(() => {
+                            ticketComp.value?.printReceipt()
+                        })
                         addToast('Bet confirmed and printing...', 'success')
                     } else {
                         addToast('Bet placed but failed to retrieve ticket for printing.', 'error')
