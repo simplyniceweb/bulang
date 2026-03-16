@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\GameMaster;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Event;
 use App\Models\Round;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -32,12 +34,32 @@ class DashboardController extends Controller
                 'event' => $event,
                 'round' => $lastRound,
                 'rounds' => $rounds,
-                'round_id' => $lastRound ? $lastRound->id : null,
-                'round_number' => $lastRound ? $lastRound->round_number : 0,
-                'round_status' => $lastRound ? $lastRound->status : 'closed',
             ]);
         } catch (\Exception $e) {
                 return Inertia::render('GameMaster/NoActiveEvent');
         }
+    }
+
+    public function haltEvent(Request $request)
+    {
+        return DB::transaction(function () use ($request) {
+            $event = Event::where('id', Event::cachedActive()->id)->lockForUpdate()->first();
+
+            if (!$event) {
+                return redirect()->back()->with('error', "No event found.");
+            }
+
+            $halt = $request->boolean('halt');
+
+            $event->update([
+                'halt_event' => $halt,
+                'halt_count' => $halt ? ($event->halt_count + 1) : $event->halt_count,
+            ]);
+
+            Cache::forget('active_event');
+
+            $status = $event->halt_event ? 'Halted' : 'Resumed';
+            return redirect()->back()->with('success', "Event status: " . ($halt ? 'Halted' : 'Resumed'));
+        });
     }
 }

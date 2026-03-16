@@ -18,6 +18,9 @@ https://gemini.google.com/app/50beccd009083a04
 To enable silent, automatic printing in Firefox (bypassing the print dialog), type about:config in the address bar, search for print.always_print_silent, and set it to true. Additionally, set print.show_print_progress to false to hide the print status bar. Use this with a single default printer.
 
 TODO:
+1. Can change percentage per round, default to 6%
+2. Can redeclare winner
+
 REVENUE:
 
 public function eventRevenue($eventId)

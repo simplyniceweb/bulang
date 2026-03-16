@@ -18,6 +18,8 @@ class Event extends Model
         'status',
         'started_at',
         'ended_at',
+        'halt_event',
+        'halt_count',
     ];
 
     protected $casts = [
@@ -65,6 +67,13 @@ class Event extends Model
     {
         return Cache::remember('active_event', 60, function () {
             return self::activeOrFail();
+        });
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($event) {
+            Cache::forget('active_event');
         });
     }
 }

@@ -18,6 +18,8 @@ return new class extends Migration
             $table->enum('status', ['inactive', 'active', 'closed'])->default('inactive');
             $table->dateTime('started_at')->nullable();
             $table->dateTime('ended_at')->nullable();
+            $table->boolean('halt_event')->default(false);
+            $table->integer('halt_count')->default(0);
             $table->timestamps();
 
             $table->index('status');

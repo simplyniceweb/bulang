@@ -262,10 +262,14 @@
             // Populate the modal data
             scannedTicket.value = response.data.ticket;
             scannedStatus.value = response.data.status;
-            canClaim.value = response.data.can_payout; // matches your controller variable
-        } catch (error) {
-            console.error("Verification failed", error);
-            addToast('Ticket not found', 'error');
+            canClaim.value = response.data.can_payout;
+        } catch (error: any) {
+            const serverMessage = error.response?.data?.message;
+            if (serverMessage) {
+                addToast(serverMessage, 'error');
+            } else if (error.response?.status === 404) {
+                addToast('Ticket not found', 'error');
+            }
         } finally {
             isVerifying.value = false;
         }

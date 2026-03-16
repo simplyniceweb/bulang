@@ -197,6 +197,24 @@
         }
         return true
     }
+
+    const isHalted = ref(props.event.halt_event);
+
+    watch(() => props.event.halt_event, (newVal) => {
+        isHalted.value = newVal;
+    });
+
+    function toggleHalt() {
+        const actionText = isHalted.value ? 'RESUME' : 'HALT';
+        
+        confirmAndPost(
+            `EMERGENCY: ${actionText} all processes for this event?`,
+            'game_master.event.halt',
+            { halt: !isHalted.value },
+            isHalted.value ? 'success' : 'error',
+            'danger'
+        )
+    }
 </script>
 
 <template>
@@ -253,8 +271,8 @@
                 <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
                     <div class="text-indigo-600 text-sm">
                         WALA<br>
-                        <span class="text-sm">({{ sumStats.meron_payout > 0 ? sumStats.meron_payout : '---' }})</span><br>
-                        <span class="text-lg">{{ sumStats.meron_total > 0 ? formatNumber(sumStats.meron_total, 0) : '---'}}</span>
+                        <span class="text-sm">({{ sumStats.wala_payout > 0 ? sumStats.wala_payout : '---' }})</span><br>
+                        <span class="text-lg">{{ sumStats.wala_total > 0 ? formatNumber(sumStats.wala_total, 0) : '---'}}</span>
                     </div>
                     <div class="text-yellow-600 text-sm">
                         DRAW<br>
@@ -263,10 +281,20 @@
                     </div>
                     <div class="text-red-600 text-sm">
                         MERON<br>
-                        <span class="text-sm">({{ sumStats.wala_payout > 0 ? sumStats.wala_payout : '---' }})</span><br>
-                        <span class="text-lg">{{ sumStats.wala_total > 0 ? formatNumber(sumStats.wala_total, 0) : '---'}}</span>
+                        <span class="text-sm">({{ sumStats.meron_payout > 0 ? sumStats.meron_payout : '---' }})</span><br>
+                        <span class="text-lg">{{ sumStats.meron_total > 0 ? formatNumber(sumStats.meron_total, 0) : '---'}}</span>
                     </div>
                 </div>
+
+                <button
+                    @click="toggleHalt"
+                    class="w-full py-3 rounded-lg font-black transition shadow-sm border-2 mt-3"
+                    :class="isHalted 
+                        ? 'bg-green-100 border-green-600 text-green-700 hover:bg-green-200' 
+                        : 'bg-red-600 border-red-700 text-white hover:bg-red-800 animate-pulse'"
+                >
+                    ⚠ {{ isHalted ? 'RESUME ALL PROCESSES' : 'EMERGENCY STOP' }} ⚠
+                </button>
                 </div>
 
                 <div class="flex flex-col gap-4">

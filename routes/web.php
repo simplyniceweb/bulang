@@ -31,6 +31,9 @@ Route::middleware(['auth', 'verified', 'game_master'])
         Route::get('/', [GameMasterDashboardController::class, 'index'])
             ->name('dashboard');
 
+        Route::post('/event/halt', [GameMasterDashboardController::class, 'haltEvent'])
+            ->name('event.halt');
+
         Route::post('/round/open', [RoundController::class, 'open'])->name('round.open');
 
         Route::post('/round/{round}/declare', [RoundController::class, 'declareWinner'])

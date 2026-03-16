@@ -77,11 +77,17 @@ class BetController extends Controller
 
     public function verify($ticketNumber)
     {
+        // block claim if event is halted
+        $event = Event::cachedActive();
+        if ($event->halt_event) {
+            return response()->json(['message' => 'Event halted for redeclaration of winner.'], 422);
+        }
+
         // Retrieve ticket with round data
         $ticket = Ticket::with('round')->where('ticket_number', $ticketNumber)->first();
 
         if (!$ticket) {
-            return response()->json(['message' => 'Ticket Not Found'], 404);
+            return response()->json(['message' => 'Ticket Not Found'], 422);
         }
 
         // for testing purposes only - reset claimed status

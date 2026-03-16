@@ -82,6 +82,29 @@ class RoundController extends Controller
         $winner = $request->winner; // 'meron' | 'wala' | 'draw'
         $noModal = $request->noModal ?? false;
 
+        // redeclare??
+        $event = Event::cachedActive();
+        if ($event->halt_event) {
+            $round->update([
+                'winner' => $winner,
+                'closed_at' => now(),
+            ]);
+
+            $event->update([
+                'halt_event' => false,
+            ]);
+
+            Cache::forget('active_event');
+            broadcast(new RoundDeclare($round));
+
+            return back()->with([
+                'success' => "Winner for round #{$round->round_number} is ".strtoupper($winner).".",
+                'round_number' => $round->round_number,
+                'round_status' => 'closed',
+                'no_modal' => $noModal
+            ]);
+        }
+
         if ($round->status === 'cancelled' || $round->status === 'open') {
             return back()->withErrors(['round' => 'Cannot declare winner for a cancelled or open round.']);
         }
