@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -27,7 +28,10 @@ class EventController extends Controller
 
     public function create()
     {
-        return Inertia::render('Admin/Events/Create');
+        $tellers = User::where('role', 'teller')->where('status', 'active')->get();
+        return Inertia::render('Admin/Events/Create', [
+            'availableTellers' => $tellers
+        ]);
     }
 
     public function store(Request $request)
@@ -36,13 +40,10 @@ class EventController extends Controller
             'name' => 'nullable|string|max:255',
             'house_percent' => 'required|numeric|min:0|max:100',
             'status' => 'required|in:inactive,active,closed',
+            'tellers' => 'array',
+            'tellers.*.id' => 'exists:users,id',
+            'tellers.*.amount' => 'required|numeric|min:0'
         ]);
-
-        $update = [
-            'name' => $request->name,
-            'house_percent' => $request->house_percent,
-            'status' => $request->status
-        ];
 
         if ($request->status === 'active') {
 
@@ -56,14 +57,39 @@ class EventController extends Controller
 
         }
 
-        Event::create($update);
+        $event = Event::create($request->only('name', 'house_percent', 'status'));
+
+        // Attach tellers with their starting wallets
+        if ($request->has('tellers')) {
+            $syncData = [];
+            foreach ($request->tellers as $teller) {
+                $syncData[$teller['id']] = [
+                    'initial_wallet' => $teller['amount'],
+                    'current_wallet' => $teller['amount'],
+                ];
+            }
+            $event->tellers()->sync($syncData);
+        }
 
         return redirect()->route('admin.events.index')->with('success', 'Event created successfully.');
     }
 
     public function edit(Event $event)
     {
-        return Inertia::render('Admin/Events/Edit', compact('event'));
+        // Load the assigned tellers with their pivot data
+        $event->load(['tellers' => function($query) {
+            $query->select('users.id', 'users.name')
+                ->withPivot('initial_wallet');
+        }]);
+
+        $availableTellers = User::where('role', 'teller')
+            ->where('status', 'active')
+            ->get(['id', 'name']);
+
+        return Inertia::render('Admin/Events/Edit', compact('event'), [
+            'event' => $event,
+            'availableTellers' => $availableTellers
+        ]);
     }
 
     public function update(Request $request, Event $event)
@@ -72,19 +98,20 @@ class EventController extends Controller
             'name' => 'nullable|string|max:255',
             'house_percent' => 'required|numeric|min:0|max:100',
             'status' => 'required|in:inactive,active,closed',
+            'tellers' => 'array',
+            'tellers.*.id' => 'exists:users,id',
+            'tellers.*.amount' => 'required|numeric'
         ]);
 
-        $update = [
-            'name' => $request->name,
-            'house_percent' => $request->house_percent,
-            'status' => $request->status,
-        ];
-
-    
         if ($request->status === 'active') {
-            if (Event::where('status','active')->exists()) {
+            // Check if ANOTHER event is already active
+            $activeExists = Event::where('status', 'active')
+                ->where('id', '!=', $event->id) // Exclude the current record
+                ->exists();
+
+            if ($activeExists) {
                 throw ValidationException::withMessages([
-                    'status' => 'Only one event can be active.'
+                    'status' => 'Only one event can be active at a time.'
                 ]);
             }
         }
@@ -96,7 +123,19 @@ class EventController extends Controller
             $update['ended_at'] = null;
         }
 
-        $event->update($update);
+        $event->update($request->only('name', 'house_percent', 'status'));
+
+        // Prepare sync data
+        $syncData = [];
+        foreach ($request->tellers as $teller) {
+            $syncData[$teller['id']] = [
+                'initial_wallet' => $teller['amount'],
+                // Don't overwrite current_wallet if the event is already active!
+                // Only set it if it's a new assignment.
+            ];
+        }
+
+        $event->tellers()->sync($syncData);
 
         return redirect()->route('admin.events.index')->with('success', 'Event updated successfully.');
     }

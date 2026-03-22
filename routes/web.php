@@ -12,6 +12,10 @@ use Inertia\Inertia;
 
 Route::get('/', [HomepageController::class, 'index'])->name('home');
 
+Route::get('/unauthorized', function () {
+    return Inertia::render('Errors/UnauthorizedTeller');
+})->name('teller.unauthorized');
+
 Route::middleware(['auth', 'verified', 'teller'])
     ->prefix('teller')
     ->name('teller.')

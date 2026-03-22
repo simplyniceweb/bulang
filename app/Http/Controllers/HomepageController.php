@@ -20,9 +20,9 @@ class HomepageController extends Controller
 
             $lastRound = Round::where('event_id', $event->id)
                 ->with('event') // Preload event for the accessor
-                ->withSum(['tickets as meron_sum' => fn($q) => $q->where('side', 'meron')], 'amount')
-                ->withSum(['tickets as wala_sum' => fn($q) => $q->where('side', 'wala')], 'amount')
-                ->withSum(['tickets as draw_sum' => fn($q) => $q->where('side', 'draw')], 'amount')
+                ->withSum(['tickets as meron_sum' => fn($q) => $q->where('side', 'meron')->where('status', 'pending')], 'amount')
+                ->withSum(['tickets as wala_sum' => fn($q) => $q->where('side', 'wala')->where('status', 'pending')], 'amount')
+                ->withSum(['tickets as draw_sum' => fn($q) => $q->where('side', 'draw')->where('status', 'pending')], 'amount')
                 ->latest('round_number')
                 ->first();
 

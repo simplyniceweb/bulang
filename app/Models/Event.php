@@ -76,4 +76,11 @@ class Event extends Model
             Cache::forget('active_event');
         });
     }
+
+    public function tellers()
+    {
+        return $this->belongsToMany(User::class, 'event_teller')
+                    ->withPivot('initial_wallet', 'current_wallet')
+                    ->withTimestamps();
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Event;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,16 @@ class TellerMiddleware
                 default:
                     return redirect()->route('home')->with('error', 'You do not have permission to access this page.');
             }
+        }
+
+        $activeEvent = Event::where('status', 'active')->first();
+        if (!$activeEvent) {
+            return redirect()->route('teller.unauthorized')->with('error', 'No active event found.');
+        }
+
+        $isAssigned = $activeEvent->tellers()->where('user_id', $user->id)->exists();
+        if (!$isAssigned) {
+            return redirect()->route('teller.unauthorized')->with('error', 'You are not assigned to the current event.');
         }
         
         return $next($request);

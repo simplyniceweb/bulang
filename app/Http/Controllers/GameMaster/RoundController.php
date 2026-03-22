@@ -11,6 +11,7 @@ use App\Events\RoundSideReopened;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +106,9 @@ class RoundController extends Controller
             Cache::forget('active_event');
             broadcast(new RoundDeclare($round));
 
+            // declare status (won/lost ticket)
+            $this->declareStatus($event->id, $round->id, $winner, 1);
+
             return back()->with([
                 'success' => "Winner for round #{$round->round_number} is ".strtoupper($winner).".",
                 'round_number' => $round->round_number,
@@ -134,6 +138,9 @@ class RoundController extends Controller
 
         Cache::forget('active_event');
         broadcast(new RoundDeclare($round));
+
+        // declare status (won/lost ticket)
+        $this->declareStatus($event->id, $round->id, $winner);
 
         return back()->with([
             'success' => "Winner for round #{$round->round_number} is ".strtoupper($winner).".",
@@ -260,5 +267,22 @@ class RoundController extends Controller
             'round_number' => $round->round_number,
             'no_modal' => $noModal
         ]);
+    }
+
+    public function declareStatus($event, $round, $winner = null, $action = null)
+    {
+        if (!$action) {
+            Ticket::where('round_id', $round)
+                ->where('event_id', $event)
+                ->where('side', 'meron')
+                ->where('status', 'pending')
+                ->update(['status' => 'won']);
+
+            Ticket::where('round_id', $round)
+                ->where('event_id', $event)
+                ->where('side', '!=', 'meron')
+                ->where('status', 'pending')
+                ->update(['status' => 'lost']);
+        }
     }
 }

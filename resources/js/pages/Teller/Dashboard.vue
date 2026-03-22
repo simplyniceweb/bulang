@@ -546,7 +546,7 @@
         <!-- Capital Info -->
         <div class="mt-4 space-y-2 text-sm">
             <div class="flex justify-between">
-            <span>Assigned Capital</span>
+            <span>Wallet</span>
             <span class="font-bold">₱ {{ capital }} </span>
             </div>
             <div class="flex justify-between">
