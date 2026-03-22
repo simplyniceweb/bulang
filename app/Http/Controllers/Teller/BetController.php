@@ -267,7 +267,10 @@ class BetController extends Controller
                 'current_wallet' => DB::raw("current_wallet - $ticket->amount")
             ]);
 
-            return response()->json(['message' => 'Ticket refunded successfully']);
+            return response()->json([
+                'message' => 'Ticket refunded successfully',
+                'ticket' => $ticket,
+            ]);
         });
     }
 }

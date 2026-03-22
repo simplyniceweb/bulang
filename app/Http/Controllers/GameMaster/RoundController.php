@@ -274,13 +274,13 @@ class RoundController extends Controller
         if (!$action) {
             Ticket::where('round_id', $round)
                 ->where('event_id', $event)
-                ->where('side', 'meron')
+                ->where('side', $winner)
                 ->where('status', 'pending')
                 ->update(['status' => 'won']);
 
             Ticket::where('round_id', $round)
                 ->where('event_id', $event)
-                ->where('side', '!=', 'meron')
+                ->where('side', '!=', $winner)
                 ->where('status', 'pending')
                 ->update(['status' => 'lost']);
         }

@@ -204,7 +204,7 @@
         }
 
         isSubmitting.value = true
-        tellerWallet.value.current += betAmount.value
+        tellerWallet.value.current = Number(tellerWallet.value.current) + betAmount.value
 
         router.post(
             route('teller.bet.index', currentRound.value?.event_id), 
@@ -232,7 +232,7 @@
                 },
                 onError: () => {
                     addToast('Failed to place bet. Please try again.', 'error')
-                    tellerWallet.value.current -= betAmount.value
+                    tellerWallet.value.current = Number(tellerWallet.value.current) - betAmount.value
                     isSubmitting.value = false
                 },
                 onFinish: () => {
@@ -293,6 +293,7 @@
     const isProcessingPayout = ref(false)
     const payoutTicketRef = ref<InstanceType<typeof PayoutTicket> | null>(null)
     const currentPaidTicket = ref<any>(null)
+    const currentRefundTicket = ref<any>(null)
 
     const handlePayoutProcess = async (ticketNumber: string) => {
         if (isProcessingPayout.value) return;
@@ -325,7 +326,11 @@
 
         isProcessingRefund.value = true;
         try {
-            await axios.post(`/teller/bet/${ticketNumber}/refund`);
+            const response = await axios.post(`/teller/bet/${ticketNumber}/refund`);
+
+            currentRefundTicket.value = response.data.ticket;
+
+            tellerWallet.value.current = Number(tellerWallet.value.current) - Number(currentRefundTicket.value.amount)
     
             addToast('Refund successful!', 'success');
             scannedTicket.value = null;
@@ -544,11 +549,25 @@
         <div class="mt-4 space-y-2 text-sm">
             <div class="flex justify-between">
             <span>Wallet</span>
-            <span class="font-bold">₱ {{ tellerWallet.initial }} </span>
+            <span class="font-bold">
+                ₱ {{ 
+                    Number(tellerWallet.initial).toLocaleString('en-US', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                    }) 
+                }}
+            </span>
             </div>
             <div class="flex justify-between">
             <span>Remaining</span>
-            <span class="font-bold text-green-600">₱ {{ tellerWallet.current }}</span>
+            <span class="font-bold text-green-600">
+                ₱ {{ 
+                    Number(tellerWallet.current).toLocaleString('en-US', { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                    }) 
+                }}
+            </span>
             </div>
             <div class="flex justify-between">
             <span>Total Rounds</span>

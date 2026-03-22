@@ -61,7 +61,15 @@ const cancel = () => {
       <div class="mt-4 flex flex-col gap-3">
         <div class="flex justify-between items-center border-b pb-2">
           <span class="font-semibold">Amount</span>
-          <span class="text-indigo-600 font-bold text-2xl">₱{{ props.amount }}</span>
+          <span class="text-indigo-600 font-bold text-2xl">
+            ₱ {{ 
+                Number(props.amount)
+                .toLocaleString('en-US', { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                        })
+              }}
+          </span>
         </div>
 
         <div class="flex justify-between items-center border-b pb-2">
@@ -73,7 +81,15 @@ const cancel = () => {
 
         <div class="flex justify-between items-center">
           <span class="font-semibold">Remaining Balance</span>
-          <span class="text-green-600 font-bold">₱{{ props.remainingBalance }}</span>
+          <span class="text-green-600 font-bold">
+                ₱ {{ 
+                Number(props.remainingBalance)
+                .toLocaleString('en-US', { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                        })
+                }}
+        </span>
         </div>
       </div>
 
