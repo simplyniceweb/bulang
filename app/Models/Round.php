@@ -9,7 +9,7 @@ class Round extends Model
 {
     use HasFactory;
 
-    protected $appends = ['payout_details'];
+    protected $appends = ['payout_details', 'bet_sum'];
 
     protected $fillable = [
         'event_id',
@@ -20,10 +20,13 @@ class Round extends Model
         'total_wala',
         'total_draw',
         'house_cut',
+        'house_percent',
         'meron_closed',
         'wala_closed',
         'draw_closed',
         'betting_closed',
+        'meron_odds',
+        'wala_odds',
         'opened_at',
         'closed_at',
         'cancelled_at',
@@ -49,9 +52,17 @@ class Round extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    public function getBetSumAttribute()
+    {
+        $totalMeron = $this->tickets()->where('side', 'meron')->sum('amount') ?? 0;
+        $totalWala = $this->tickets()->where('side', 'wala')->sum('amount') ?? 0;
+
+        return $totalMeron + $totalWala;
+    }
+
     public function getPayoutDetailsAttribute()
     {
-        $housePercent = $this->event?->house_percent ?? 6.00;
+        $housePercent = $this->house_percent ?? $this->event?->house_percent ?? 6;
         $plasada =  $housePercent / 100; // % commission
 
         // Use the sums from 'withSum' if they exist, otherwise perform the query
@@ -77,41 +88,4 @@ class Round extends Model
             'draw_multiplier' => 7, // Fixed as per your request
         ];
     }
-
-    // public function getPayoutDetailsAttribute()
-    // {
-    //     // $housePercent = $this->event?->house_percent ?? 6.00;
-    //     $housePercent = ($this->event?->house_percent ?? 6.00) * 2;
-    //     $commissionMultiplier = $housePercent / 100;
-
-    //     $totalMeron = (float)($this->meron_sum ?? $this->tickets()->where('side', 'meron')->sum('amount') ?? 0);
-    //     $totalWala = (float)($this->wala_sum ?? $this->tickets()->where('side', 'wala')->sum('amount') ?? 0);
-    //     $totalDraw = (float)($this->draw_sum ?? $this->tickets()->where('side', 'draw')->sum('amount') ?? 0);
-        
-    //     // Calculate individual net amounts (6% taken from each side)
-    //     $netMeron = $totalMeron * (1 - $commissionMultiplier);
-    //     $netWala = $totalWala * (1 - $commissionMultiplier);
-
-    //     /**
-    //      * Logic: If Meron wins, the payout comes from (Total Meron + Total Wala) - Total 6% Commission.
-    //      * This is mathematically the same as (Net Meron + Net Wala).
-    //      */
-    //     $totalNetPool = $netMeron + $netWala;
-
-    //     // Payout per 100 bet
-    //     $meronPayout = $totalMeron > 0 ? ($totalNetPool / $totalMeron) * 100 : 0;
-    //     $walaPayout = $totalWala > 0 ? ($totalNetPool / $totalWala) * 100 : 0;
-
-    //     return [
-    //         'meron_total'     => $totalMeron,
-    //         'wala_total'      => $totalWala,
-    //         'draw_total'      => $totalDraw,
-    //         'meron_payout'    => round($meronPayout, 2),
-    //         'wala_payout'     => round($walaPayout, 2),
-    //         'meron_odds'      => $totalMeron > 0 ? round($totalNetPool / $totalMeron, 2) : 0,
-    //         'wala_odds'       => $totalWala > 0 ? round($totalNetPool / $totalWala, 2) : 0,
-    //         'draw_multiplier' => 7,
-    //         'house_take'      => round(($totalMeron + $totalWala) * $commissionMultiplier, 2),
-    //     ];
-    // }
 }

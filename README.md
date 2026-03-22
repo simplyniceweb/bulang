@@ -19,7 +19,6 @@ To enable silent, automatic printing in Firefox (bypassing the print dialog), ty
 
 TODO:
 1. Can change percentage per round, default to 6%
-2. Can redeclare winner
 
 REVENUE:
 

@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
+use function PHPUnit\Framework\isNull;
+
 class DashboardController extends Controller
 {
     public function index()
@@ -47,6 +49,19 @@ class DashboardController extends Controller
 
             if (!$event) {
                 return redirect()->back()->with('error', "No event found.");
+            }
+
+
+            $lastRound = Round::where('event_id', $event->id)
+                ->latest('round_number')
+                ->first();
+
+            if (!$lastRound->betting_closed) {
+                return redirect()->back()->with('error', "You can't halt a round with an open/cancelled status.");
+            }
+
+            if (!$lastRound->winner) {
+                return redirect()->back()->with('error', "You can't halt a round with undeclared winner.");
             }
 
             $halt = $request->boolean('halt');

@@ -92,11 +92,28 @@
         echo?.leave('rounds')
     })
 
+    // const housePercent = ref(props.event?.house_percent ?? 6);
+
+    // Priority: Active Round -> Event Default -> Hardcoded 6
+    const housePercent = ref(
+        props.round?.house_percent ?? 
+        props.event?.house_percent ?? 
+        6
+    );
+
+    // Optional: If you want the input to update automatically 
+    // when the round changes (e.g., via Inertia reload)
+    watch(() => props.round?.house_percent, (newVal) => {
+        if (newVal !== undefined && newVal !== null) {
+            housePercent.value = newVal;
+        }
+    });
+
     function startRound() {
         confirmAndPost(
-            'Open a new round?',
+            `Open round #${(props.round?.round_number || 0) + 1} with ${housePercent.value}% house take?`,
             'game_master.round.open',
-            {},
+            { house_percent: housePercent.value },
             'success',
             'success'
         )
@@ -181,8 +198,12 @@
                 { ...payload, noModal: true },
                 {
                     onSuccess: (page: any) => {
-                        addToast((page.props.flash?.success as string) || '', toastType)
-                    }
+                        if (page.props.flash?.success) {
+                            addToast(page.props.flash?.success as string, 'success');
+                        } else {
+                            addToast(page.props.flash?.error as string, 'error');
+                        }
+                    },
                 }
             )
         }
@@ -233,12 +254,24 @@
                     <span :class="props.round?.status==='open'?'text-green-600':'text-red-600'">{{ props.round?.status.toUpperCase() }}</span>
                 </p>
                 </div>
-                <button
-                @click="startRound"
-                class="bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition shadow-lg"
-                >
-                OPEN NEW ROUND
-                </button>
+                <div class="flex gap-2">
+                    <button
+                        @click="startRound"
+                        class="flex-1 bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-700 transition shadow-lg flex flex-col items-center justify-center leading-tight"
+                    >
+                        <span class="text-lg">OPEN NEW ROUND</span>
+                        <span class="text-xs opacity-80">SET TO {{ housePercent }}%</span>
+                    </button>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">House Take %</label>
+                        <input 
+                            v-model="housePercent" 
+                            type="number" 
+                            step="0.1"
+                            class="w-24 bg-gray-100 border-2 border-transparent focus:border-green-500 focus:bg-white rounded-xl px-3 py-4 font-black text-center outline-none transition"
+                        />
+                    </div>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">

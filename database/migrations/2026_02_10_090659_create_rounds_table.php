@@ -21,12 +21,17 @@ return new class extends Migration
             $table->decimal('total_meron', 12, 2)->default(0);
             $table->decimal('total_wala', 12, 2)->default(0);
             $table->decimal('total_draw', 12, 2)->default(0);
+
             $table->decimal('house_cut', 12, 2)->default(0);
+            $table->decimal('house_percent', 5, 2)->default(6.00);
 
             $table->boolean('meron_closed')->default(false);
             $table->boolean('wala_closed')->default(false);
             $table->boolean('draw_closed')->default(false);
             $table->boolean('betting_closed')->default(false);
+
+            $table->decimal('meron_odds', 6, 3)->default(0);
+            $table->decimal('wala_odds', 6, 3)->default(0);
 
             $table->dateTime('opened_at');
             $table->dateTime('closed_at')->nullable();

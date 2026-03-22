@@ -12,10 +12,14 @@ class TicketObserver
      */
     public function created(Ticket $ticket): void
     {
+    }
+
+    public function saved(Ticket $ticket): void
+    {
+        // 'saved' fires after BOTH created and updated
         $round = $ticket->round;
         if ($round) {
-            // Recalculate and broadcast to all tellers/screens
-            broadcast(new BettingUpdated($round))->toOthers();
+            broadcast(new BettingUpdated($round));
         }
     }
 

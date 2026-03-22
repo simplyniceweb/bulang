@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Teller;
 
+use App\Events\BettingUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
@@ -30,33 +31,66 @@ class BetController extends Controller
             ], 403);
         }
 
-        $ticket = DB::transaction(function () use ($event, $roundId, $side, $amount) {            
-            $ticket = new Ticket();
-            $ticket->ticket_number = 'TEMP-' . Str::random(10);
-            $ticket->event_id = $event->id;
-            $ticket->round_id = $roundId;
-            $ticket->teller_id = auth()->id();
-            $ticket->side = $side;
-            $ticket->amount = $amount;
-            $ticket->odds = 1;
-            $ticket->potential_payout = 0;
-            $ticket->save();
 
-            // recalculate odds
+        $ticket = DB::transaction(function () use ($event, $roundId, $side, $amount) {
+            // 1. Lock the round and get payout details FIRST
             $round = Round::where('id', $roundId)->lockForUpdate()->firstOrFail();
-            $payouts = $round->payout_details;
 
-            $currentOdds = ($side === 'meron') ? $payouts['meron_payout'] : $payouts['wala_payout'];
-            if ($side === 'draw') {
-                $currentOdds = $payouts['draw_multiplier'];
+            // 2. Use cached totals instead of calling SUM() on the tickets table
+            // Ensure you add these columns to your rounds table migration!
+            if ($side === 'meron') {
+                $round->total_meron += $amount;
+            } elseif ($side === 'wala') {
+                $round->total_wala += $amount;
+            } else {
+                $round->total_draw += $amount;
             }
 
-            $ticketOdds = $currentOdds / 100;
-            
+            // 3. Calculation logic
+            $housePercent = $round->house_percent ?? $event?->house_percent ?? 6;
+            $plasada = $housePercent / 100;
+
+            $totalPool = $round->total_meron + $round->total_wala;
+            $netPool = $totalPool * (1 - $plasada);
+
+            // Odds for THIS ticket (Current estimate)
+            if ($side === 'draw') {
+                $ticketOdds = 7.00;
+            } else {
+                $sideTotal = ($side === 'meron') ? $round->total_meron : $round->total_wala;
+                $ticketOdds = ($sideTotal > 0) ? ($netPool / $sideTotal) : 0.94;
+            }
+
+            // 4. Create Ticket (One save call)
+            $ticket = Ticket::create([
+                'event_id'         => $event->id,
+                'round_id'         => $round->id,
+                'teller_id'        => auth()->id(),
+                'side'             => $side,
+                'amount'           => $amount,
+                'odds'             => $ticketOdds,
+                'potential_payout' => $amount * $ticketOdds,
+                'ticket_number'    => 'PENDING'
+            ]);
+
+            // 5. Update Ticket Number and Round Totals/Odds in one go
+            $oddMeron = ($round->total_meron > 0) ? ($netPool / $round->total_meron) * 100 : 0;
+            $oddWala = ($round->total_wala > 0) ? ($netPool / $round->total_wala) * 100 : 0;
+
+            $round->update([
+                'total_meron' => $round->total_meron,
+                'total_wala'  => $round->total_wala,
+                'total_draw'  => $round->total_draw,
+                'meron_odds'  => $oddMeron,
+                'wala_odds'   => $oddWala,
+            ]);
+
+            $sideOdds = $side === 'meron' ? $oddMeron : $oddWala;
+
             $ticket->update([
-                'ticket_number' => $event->id. '-' . $ticket->round_id . '-' . $ticket->id . '-' . strtoupper(Str::random(4)),
-                'odds' => $ticketOdds, // Current odds at time of bet
-                'potential_payout' => $ticket->amount * $ticketOdds
+                'ticket_number' => "{$event->id}-{$round->id}-{$ticket->id}-" . strtoupper(Str::random(4)),
+                'odds' => $sideOdds,
+                'potential_payout' => $ticket->amount * ($sideOdds / 100),
             ]);
 
             return $ticket;
@@ -90,12 +124,6 @@ class BetController extends Controller
             return response()->json(['message' => 'Ticket Not Found'], 422);
         }
 
-        // for testing purposes only - reset claimed status
-        // $ticket->update([
-        //     'claimed_at' => null,
-        //     'paid_by' => null,
-        // ]);
-
         $round = $ticket->round;
         $status = 'pending'; 
         $can_payout = false;
@@ -110,6 +138,13 @@ class BetController extends Controller
                 'message' => 'This ticket was already paid at ' . $ticket->claimed_at->format('Y-m-d h:i A')
             ]);
         }
+
+        $sideOdds = $round->{$ticket->side.'_odds'};
+        $ticket->update([
+            'odds' => $sideOdds,
+            'potential_payout' => $round->status === 'cancelled' ? $ticket->amount : $ticket->amount * ($sideOdds / 100)
+        ]);
+        
 
         // 2. Evaluate based on Round Status
         switch ($round->status) {

@@ -55,12 +55,14 @@ class RoundController extends Controller
 
         $roundNumber = $lastRound ? $lastRound->round_number + 1 : 1;
 
-        $newRound = DB::transaction(function () use ($event, $roundNumber) {
+        $percent = $request->house_percent ?? $event->house_percent;
+        $newRound = DB::transaction(function () use ($event, $roundNumber, $percent) {
 
             return Round::create([
                 'event_id' => $event->id,
                 'round_number' => $roundNumber,
                 'status' => 'open',
+                'house_percent' => $percent,
                 'opened_at' => now(),
             ]);
 
@@ -82,12 +84,18 @@ class RoundController extends Controller
         $winner = $request->winner; // 'meron' | 'wala' | 'draw'
         $noModal = $request->noModal ?? false;
 
+        $percentage = $round->house_percent ?? $event?->house_percent ?? 6;
+        $totalPool = $round->bet_sum;
+
+        $houseCut = ($totalPool * $percentage) / 100;
+
         // redeclare??
         $event = Event::cachedActive();
         if ($event->halt_event) {
             $round->update([
                 'winner' => $winner,
                 'closed_at' => now(),
+                'house_cut' => $houseCut,
             ]);
 
             $event->update([
@@ -121,6 +129,7 @@ class RoundController extends Controller
             'status' => 'closed',
             'winner' => $winner,
             'closed_at' => now(),
+            'house_cut' => $houseCut
         ]);
 
         Cache::forget('active_event');
@@ -209,11 +218,40 @@ class RoundController extends Controller
             return back()->withErrors(['round' => 'Global betting already closed or round cancelled.']);
         }
 
-        $round->update([
-            'status' => 'closed',
-            'betting_closed' => true,
-            'closed_at' => now(),
-        ]);
+        DB::transaction(function () use ($round) {
+            $round->update([
+                'status' => 'closed',
+                'betting_closed' => true,
+                'closed_at' => now(),
+            ]);
+
+            // 1. Get the final, frozen payout multipliers
+            $payouts = $round->payout_details; 
+            $meronMultiplier = $payouts['meron_payout'] / 100;
+            $walaMultiplier = $payouts['wala_payout'] / 100;
+            $drawMultiplier = $payouts['draw_multiplier'];
+
+            // 2. Bulk update all tickets for this round so they are "Locked"
+            // This is much more efficient than updating one by one.
+            DB::statement("
+                UPDATE tickets 
+                SET odds = CASE 
+                    WHEN side = 'meron' THEN ? 
+                    WHEN side = 'wala' THEN ? 
+                    ELSE ? 
+                END,
+                potential_payout = amount * (CASE 
+                    WHEN side = 'meron' THEN ? 
+                    WHEN side = 'wala' THEN ? 
+                    ELSE ? 
+                END)
+                WHERE round_id = ?
+            ", [
+                $meronMultiplier, $walaMultiplier, $drawMultiplier,
+                $meronMultiplier, $walaMultiplier, $drawMultiplier,
+                $round->id
+            ]);
+        });
         
         broadcast(new RoundClosed($round));
 
