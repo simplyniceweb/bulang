@@ -21,6 +21,7 @@ return new class extends Migration
             $table->rememberToken();
             $table->enum('role', ['admin', 'game_master', 'teller']);
             $table->enum('status', ['active', 'suspended'])->default('active');
+            $table->decimal('wallet', 12, 2);
             $table->timestamps();
             $table->softDeletes();
         });

@@ -63,6 +63,7 @@ class BetController extends Controller
 
             // 4. Create Ticket (One save call)
             $ticket = Ticket::create([
+                'status'           => 'pending',
                 'event_id'         => $event->id,
                 'round_id'         => $round->id,
                 'teller_id'        => auth()->id(),
@@ -207,6 +208,7 @@ class BetController extends Controller
 
             // Process Claim
             $ticket->update([
+                'status' => 'paid',
                 'claimed_at' => now(),
                 'paid_by' => auth()->id(), // Track which teller paid this out
             ]);
@@ -215,6 +217,31 @@ class BetController extends Controller
                 'message' => 'Payout successful!',
                 'ticket' => $ticket->fresh(['round', 'teller:id,name', 'paidBy:id,name']), // Return the updated ticket with relations
             ]);
+        });
+    }
+
+    public function refund($ticketNumber)
+    {
+        return DB::transaction(function () use ($ticketNumber) {
+            $ticket = Ticket::where('ticket_number', $ticketNumber)
+                    ->where('claimed_at', null) // Only refund if not already settled
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+            // 1. Update the bet status
+            $ticket->update([
+                'status' => 'refunded',
+                'refunded_at' => now(),
+                'refunded_by' => auth()->id(),
+            ]);
+
+            // 2. Refund the Teller/User Balance (if using a digital wallet)
+            // auth()->user()->increment('balance', $bet->amount);
+
+            // 3. Trigger Broadcast to update the UI / Odds / Total Bet Pool
+            broadcast(new BettingUpdated($ticket->round));
+
+            return response()->json(['message' => 'Ticket refunded successfully']);
         });
     }
 }

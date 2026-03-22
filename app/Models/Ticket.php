@@ -11,25 +11,30 @@ class Ticket extends Model
 
     protected $fillable = [
         'ticket_number',
+        'status',
         'event_id',
         'round_id',
         'teller_id',
         'paid_by',
+        'refunded_by',
         'side',
         'amount',
         'odds',
         'potential_payout',
         'claimed_at',
+        'refunded_at'
     ];
 
     protected $casts = [
         'odds' => 'decimal:3',
         'potential_payout' => 'decimal:2',
         'claimed_at' => 'datetime',
+        'refunded_at' => 'datetime',
     ];
 
     protected $dates = [
         'claimed_at',
+        'refunded_at' => 'datetime',
     ];
 
     public function event()
@@ -50,6 +55,11 @@ class Ticket extends Model
     public function paidBy()
     {
         return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    public function refundedBy()
+    {
+        return $this->belongsTo(User::class, 'refunded_by');
     }
 
     public function transactions()

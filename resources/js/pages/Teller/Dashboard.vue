@@ -292,9 +292,10 @@
         }
     };
 
-    const isProcessingPayout = ref(false);
-    const payoutTicketRef = ref<InstanceType<typeof PayoutTicket> | null>(null);
-    const currentPaidTicket = ref<any>(null);
+    const isProcessingRefund = ref(false)
+    const isProcessingPayout = ref(false)
+    const payoutTicketRef = ref<InstanceType<typeof PayoutTicket> | null>(null)
+    const currentPaidTicket = ref<any>(null)
 
     const handlePayoutProcess = async (ticketNumber: string) => {
         if (isProcessingPayout.value) return;
@@ -319,6 +320,23 @@
             addToast(error.response?.data?.message || 'Error processing payout', 'error');
         } finally {
             isProcessingPayout.value = false;
+        }
+    };
+
+    const handleRefundProcess = async(ticketNumber: string) => {
+        if (isProcessingRefund.value) return;
+
+        isProcessingRefund.value = true;
+        try {
+            await axios.post(`/teller/bet/${ticketNumber}/refund`);
+    
+            addToast('Refund successful!', 'success');
+            scannedTicket.value = null;
+
+        } catch (error: any) {
+            addToast(error.response?.data?.message || 'Error processing refund', 'error');
+        } finally {
+            isProcessingRefund.value = false;
         }
     };
 
@@ -355,6 +373,7 @@
         :status="scannedStatus ?? ''" 
         :can-payout="canClaim"
         @close="scannedTicket = null"
+        @refund="handleRefundProcess"
         @confirm="handlePayoutProcess"
     />
     <Head title="Teller Dashboard" />

@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified', 'teller'])
         Route::post('/bet/{event}', [BetController::class, 'bet'])->name('bet.index');
         Route::get('/bet/{code}/verify', [BetController::class, 'verify'])->name('bet.verify');
         Route::post('/bet/{code}/claim', [BetController::class, 'claim'])->name('bet.claim');
+        Route::post('/bet/{code}/refund', [BetController::class, 'refund'])->name('bet.refund');
 });
 
 Route::middleware(['auth', 'verified', 'game_master'])

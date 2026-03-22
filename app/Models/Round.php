@@ -54,8 +54,15 @@ class Round extends Model
 
     public function getBetSumAttribute()
     {
-        $totalMeron = $this->tickets()->where('side', 'meron')->sum('amount') ?? 0;
-        $totalWala = $this->tickets()->where('side', 'wala')->sum('amount') ?? 0;
+        $totalMeron = $this->tickets()
+            ->where('status', 'pending')
+            ->where('side', 'meron')
+            ->sum('amount') ?? 0;
+
+        $totalWala = $this->tickets()
+            ->where('status', 'pending')
+            ->where('side', 'wala')
+            ->sum('amount') ?? 0;
 
         return $totalMeron + $totalWala;
     }
@@ -67,9 +74,9 @@ class Round extends Model
 
         // Use the sums from 'withSum' if they exist, otherwise perform the query
         // (The ?? fallback is useful for Echo broadcasts where sums might not be pre-loaded)
-        $totalMeron = $this->meron_sum ?? $this->tickets()->where('side', 'meron')->sum('amount') ?? 0;
-        $totalWala = $this->wala_sum ?? $this->tickets()->where('side', 'wala')->sum('amount') ?? 0;
-        $totalDraw = $this->draw_sum ?? $this->tickets()->where('side', 'draw')->sum('amount') ?? 0;
+        $totalMeron = $this->meron_sum ?? $this->tickets()->where('status', 'pending')->where('side', 'meron')->sum('amount') ?? 0;
+        $totalWala = $this->wala_sum ?? $this->tickets()->where('status', 'pending')->where('side', 'wala')->sum('amount') ?? 0;
+        $totalDraw = $this->draw_sum ?? $this->tickets()->where('status', 'pending')->where('side', 'draw')->sum('amount') ?? 0;
         
         $totalPool = $totalMeron + $totalWala;
         $netPool = $totalPool * (1 - $plasada);

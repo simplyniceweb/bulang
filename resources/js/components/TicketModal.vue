@@ -8,7 +8,7 @@ const props = defineProps<{
     canPayout: boolean;
 }>();
 
-const emit = defineEmits(['close', 'confirm']);
+const emit = defineEmits(['close', 'refund', 'confirm']);
 
 const statusMap: Record<string, { label: string; class: string; icon: string }> = {
     winner: { label: 'WINNING TICKET', class: 'bg-green-600', icon: '🏆' },
@@ -16,7 +16,7 @@ const statusMap: Record<string, { label: string; class: string; icon: string }> 
     cancelled: { label: 'ROUND CANCELLED', class: 'bg-gray-700', icon: '⚠️' },
     already_paid: { label: 'ALREADY CLAIMED', class: 'bg-orange-500', icon: '💰' },
     waiting_result: { label: 'RESULT PENDING', class: 'bg-yellow-500', icon: '⏳' },
-    betting_open: { label: 'FIGHT ON GOING', class: 'bg-blue-500', icon: '⚔️' },
+    betting_open: { label: 'BETTING ON GOING', class: 'bg-blue-500', icon: '⚔️' },
 };
 
 const currentStatus = computed(() => statusMap[props.status] || { label: 'UNKNOWN', class: 'bg-gray-500', icon: '?' });
@@ -72,6 +72,13 @@ const roundWinner = computed(() => {
                 <div class="flex gap-3 mt-6">
                     <button @click="emit('close')" class="flex-1 px-4 py-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition uppercase text-sm">
                         Close
+                    </button>
+                    <button 
+                        v-if="status === 'betting_open'" 
+                        @click="emit('refund', ticket.ticket_number)"
+                        class="flex-2 px-4 py-4 bg-black text-white font-black rounded-xl hover:bg-green-600 transition uppercase shadow-lg shadow-black/20 text-sm tracking-wide"
+                    >
+                        Refund Ticket
                     </button>
                     <button 
                         v-if="canPayout" 
