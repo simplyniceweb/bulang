@@ -27,10 +27,16 @@ class DashboardController extends Controller
                         ->take(20)
                         ->get();
 
+            $tellerData = $event->tellers()->where('user_id', auth()->id())->first();
+
             return Inertia::render('Teller/Dashboard', [
                 'event' => $event,
                 'round' => $lastRound,
                 'rounds' => $rounds,
+                'teller' => [
+                    'initial' => $tellerData->pivot->initial_wallet ?? 0,
+                    'current' => $tellerData->pivot->current_wallet ?? 0,
+                ]
             ]);
         } catch (\Exception $e) {
                 return Inertia::render('Teller/NoActiveEvent');

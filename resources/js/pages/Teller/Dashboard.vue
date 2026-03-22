@@ -25,7 +25,11 @@
     const props = defineProps<{
         event: any
         round: any,
-        rounds: any[]
+        rounds: any[],
+        teller: {
+            initial: number,
+            current: number
+        }
     }>()
 
     interface Round {
@@ -41,12 +45,12 @@
 
     const currentRound = ref<Round | null>(props.round)
     const rounds = ref<Round[]>([...props.rounds])
+    const tellerWallet = ref(props.teller);
     const meronClosed = computed(() => currentRound.value?.meron_closed ?? false)
     const walaClosed = computed(() => currentRound.value?.wala_closed ?? false)
     const drawClosed = computed(() => currentRound.value?.draw_closed ?? false)
     const roundStatus = computed(() => currentRound.value?.status)
     const roundNumber = computed(() => currentRound.value?.round_number)
-    const remainingBalance = computed(() => balance.value - betAmount.value)
 
     const initialStats = {
         meron_total: 0,
@@ -75,8 +79,6 @@
 
     // bet confirmation
     const side = ref<'meron' | 'wala' | 'draw'>('meron')
-    const capital = 10000;
-    const balance = ref(capital);
     const showConfirm = ref(false)
 
     const cancelBet = () => showConfirm.value = false
@@ -201,13 +203,8 @@
             return
         }
 
-        if (betAmount.value > balance.value) {
-            // addToast('Insufficient balance.', 'error')
-            // return
-        }
-
         isSubmitting.value = true
-        balance.value -= betAmount.value
+        tellerWallet.value.current += betAmount.value
 
         router.post(
             route('teller.bet.index', currentRound.value?.event_id), 
@@ -235,7 +232,7 @@
                 },
                 onError: () => {
                     addToast('Failed to place bet. Please try again.', 'error')
-                    balance.value += betAmount.value
+                    tellerWallet.value.current -= betAmount.value
                     isSubmitting.value = false
                 },
                 onFinish: () => {
@@ -516,7 +513,7 @@
                 :loading="isSubmitting"
                 :amount="betAmount"
                 :side="side"
-                :remaining-balance="remainingBalance"
+                :remaining-balance="tellerWallet.current"
                 @confirm="confirmBet"
                 @cancel="cancelBet"
             />
@@ -547,11 +544,11 @@
         <div class="mt-4 space-y-2 text-sm">
             <div class="flex justify-between">
             <span>Wallet</span>
-            <span class="font-bold">₱ {{ capital }} </span>
+            <span class="font-bold">₱ {{ tellerWallet.initial }} </span>
             </div>
             <div class="flex justify-between">
             <span>Remaining</span>
-            <span class="font-bold text-green-600">₱ {{ balance }}</span>
+            <span class="font-bold text-green-600">₱ {{ tellerWallet.current }}</span>
             </div>
             <div class="flex justify-between">
             <span>Total Rounds</span>

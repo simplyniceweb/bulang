@@ -88,6 +88,11 @@ class BetController extends Controller
 
             $sideOdds = $side === 'meron' ? $oddMeron : $oddWala;
 
+            // 6. Update teller wallet
+            $event->tellers()->updateExistingPivot(auth()->id(), [
+                'current_wallet' => DB::raw("current_wallet + $amount")
+            ]);
+
             $ticket->update([
                 'ticket_number' => "{$event->id}-{$round->id}-{$ticket->id}-" . strtoupper(Str::random(4)),
                 'odds' => $sideOdds,
@@ -137,6 +142,15 @@ class BetController extends Controller
                 'status' => 'already_paid',
                 'can_payout' => false,
                 'message' => 'This ticket was already paid at ' . $ticket->claimed_at->format('Y-m-d h:i A')
+            ]);
+        }
+
+        if ($ticket->refunded_at) {
+            return response()->json([
+                'ticket' => $ticket,
+                'status' => 'refunded',
+                'can_payout' => false,
+                'message' => 'This ticket was already refunded at ' . $ticket->refunded_at->format('Y-m-d h:i A')
             ]);
         }
 
@@ -213,6 +227,12 @@ class BetController extends Controller
                 'paid_by' => auth()->id(), // Track which teller paid this out
             ]);
 
+            // Update teller wallet
+            $event = Event::where('id', Event::cachedActive()->id)->lockForUpdate()->first();
+            $event->tellers()->updateExistingPivot(auth()->id(), [
+                'current_wallet' => DB::raw("current_wallet - $ticket->amount")
+            ]);
+
             return response()->json([
                 'message' => 'Payout successful!',
                 'ticket' => $ticket->fresh(['round', 'teller:id,name', 'paidBy:id,name']), // Return the updated ticket with relations
@@ -240,6 +260,12 @@ class BetController extends Controller
 
             // 3. Trigger Broadcast to update the UI / Odds / Total Bet Pool
             broadcast(new BettingUpdated($ticket->round));
+
+            // 4. Update teller wallet
+            $event = Event::where('id', Event::cachedActive()->id)->lockForUpdate()->first();
+            $event->tellers()->updateExistingPivot(auth()->id(), [
+                'current_wallet' => DB::raw("current_wallet - $ticket->amount")
+            ]);
 
             return response()->json(['message' => 'Ticket refunded successfully']);
         });

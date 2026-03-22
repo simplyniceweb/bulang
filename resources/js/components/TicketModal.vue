@@ -15,6 +15,7 @@ const statusMap: Record<string, { label: string; class: string; icon: string }> 
     loser: { label: 'LOSING TICKET', class: 'bg-red-600', icon: '❌' },
     cancelled: { label: 'ROUND CANCELLED', class: 'bg-gray-700', icon: '⚠️' },
     already_paid: { label: 'ALREADY CLAIMED', class: 'bg-orange-500', icon: '💰' },
+    refunded: { label: 'ALREADY REFUNDED', class: 'bg-orange-500', icon: '💰' },
     waiting_result: { label: 'RESULT PENDING', class: 'bg-yellow-500', icon: '⏳' },
     betting_open: { label: 'BETTING ON GOING', class: 'bg-blue-500', icon: '⚔️' },
 };
