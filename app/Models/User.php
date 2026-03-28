@@ -67,6 +67,6 @@ class User extends Authenticatable
     // Ledger entries
     public function transactions()
     {
-        return $this->hasMany(TellerTransaction::class);
+        return $this->hasMany(Transaction::class);
     }
 }

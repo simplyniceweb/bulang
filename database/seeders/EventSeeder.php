@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Event;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class EventSeeder extends Seeder
 {
@@ -13,9 +12,15 @@ class EventSeeder extends Seeder
      */
     public function run(): void
     {
-        Event::create([
-            'name' => '3 COCK DERBY',
-            'status' => 'active',
+        DB::table('events')->insert([
+            [
+                'name' => '3 COCK DERBY',
+                'status' => 'inactive',
+            ],
+            [
+                'name' => '3 HITS',
+                'status' => 'active'
+            ]
         ]);
     }
 }

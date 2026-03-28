@@ -12,86 +12,113 @@ class RoundTicketSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
+            for ($j=1; $j <= 2; $j++) { 
+                $eventId = $j;
+                $now = Carbon::now();
 
-            $eventId = 1; // change if needed
-            $now = Carbon::now();
+                for ($roundNumber = 1; $roundNumber <= 120; $roundNumber++) {
 
-            for ($roundNumber = 1; $roundNumber <= 120; $roundNumber++) {
+                    $winner = rand(0, 1) ? 'meron' : 'wala';
 
-                $winner = rand(0, 1) ? 'meron' : 'wala';
+                    // Create round
+                    $roundId = DB::table('rounds')->insertGetId([
+                        'event_id' => $eventId,
+                        'round_number' => $roundNumber,
+                        'status' => 'closed',
+                        'winner' => $winner,
 
-                // Create round
-                $roundId = DB::table('rounds')->insertGetId([
-                    'event_id' => $eventId,
-                    'round_number' => $roundNumber,
-                    'status' => 'closed',
-                    'winner' => $winner,
+                        'total_meron' => 0,
+                        'total_wala' => 0,
+                        'total_draw' => 0,
 
-                    'total_meron' => 0,
-                    'total_wala' => 0,
-                    'total_draw' => 0,
+                        'house_cut' => 0,
+                        'house_percent' => 6.00,
 
-                    'house_cut' => 0,
-                    'house_percent' => 6.00,
+                        'opened_at' => $now->copy()->subMinutes(5),
+                        'closed_at' => $now,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
 
-                    'opened_at' => $now->copy()->subMinutes(5),
-                    'closed_at' => $now,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                    $totalMeron = 0;
+                    $totalWala = 0;
+                    $totalDraw = 0;
 
-                $totalMeron = 0;
-                $totalWala = 0;
+                    $ticketsData = [];
 
-                $ticketsData = [];
+                    for ($tellerId = 3; $tellerId <= 22; $tellerId++) {
 
-                for ($tellerId = 3; $tellerId <= 22; $tellerId++) {
+                        $draw = false;
+                        $ticketCount = rand(15, 25);
 
-                    $ticketCount = rand(15, 25);
+                        for ($i = 0; $i < $ticketCount; $i++) {
 
-                    for ($i = 0; $i < $ticketCount; $i++) {
+                            $side = rand(0, 1) ? 'meron' : 'wala';
+                            $amount = rand(100, 5000);
 
-                        $side = rand(0, 1) ? 'meron' : 'wala';
-                        $amount = rand(100, 5000);
+                            if ($side === 'meron') {
+                                $totalMeron += $amount;
+                            } else {
+                                $totalWala += $amount;
+                            }
 
-                        if ($side === 'meron') {
-                            $totalMeron += $amount;
-                        } else {
-                            $totalWala += $amount;
+                            $ticketsData[] = [
+                                'ticket_number' => "{$eventId}-{$roundId}-{$i}-" . strtoupper(Str::random(6)),
+                                'status' => $side === $winner ? 'won' : 'lost',
+
+                                'event_id' => $eventId,
+                                'round_id' => $roundId,
+
+                                'teller_id' => $tellerId,
+
+                                'side' => $side,
+                                'amount' => $amount,
+                                'odds' => 0,
+                                'potential_payout' => 0,
+
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+
+                            if (!$draw) {
+                                $draw = true;
+                                $totalDraw += $amount;
+
+                                $ticketsData[] = [
+                                    'ticket_number' => "{$eventId}-{$roundId}-{($i+1)}-" . strtoupper(Str::random(6)),
+                                    'status' => 'lost',
+
+                                    'event_id' => $eventId,
+                                    'round_id' => $roundId,
+
+                                    'teller_id' => $tellerId,
+
+                                    'side' => 'draw',
+                                    'amount' => $amount,
+                                    'odds' => 0,
+                                    'potential_payout' => 0,
+
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ];
+                            }
                         }
-
-                        $ticketsData[] = [
-                            'ticket_number' => "{$eventId}-{$roundId}-{$i}-" . strtoupper(Str::random(6)),
-                            'status' => $side === $winner ? 'won' : 'lost',
-
-                            'event_id' => $eventId,
-                            'round_id' => $roundId,
-
-                            'teller_id' => $tellerId,
-
-                            'side' => $side,
-                            'amount' => $amount,
-                            'odds' => 0,
-                            'potential_payout' => 0,
-
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
                     }
+                    
+                    DB::table('tickets')->insert($ticketsData);
+
+                    // Compute house cut (6%)
+                    $totalPool = $totalMeron + $totalWala;
+                    $houseCut = $totalPool * 0.06;
+
+                    // Update round totals
+                    DB::table('rounds')->where('id', $roundId)->update([
+                        'total_meron' => $totalMeron,
+                        'total_wala' => $totalWala,
+                        'total_draw' => $totalDraw,
+                        'house_cut' => $houseCut,
+                    ]);
                 }
-                
-                DB::table('tickets')->insert($ticketsData);
-
-                // Compute house cut (6%)
-                $totalPool = $totalMeron + $totalWala;
-                $houseCut = $totalPool * 0.06;
-
-                // Update round totals
-                DB::table('rounds')->where('id', $roundId)->update([
-                    'total_meron' => $totalMeron,
-                    'total_wala' => $totalWala,
-                    'house_cut' => $houseCut,
-                ]);
             }
         });
     }

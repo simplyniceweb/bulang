@@ -5,14 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class TellerTransaction extends Model
+class Transaction extends Model
 {
     use HasFactory;
 
     public $timestamps = false;
 
     protected $fillable = [
-        'user_id',
+        'teller_id',
         'event_id',
         'round_id',
         'ticket_id',
@@ -21,7 +21,7 @@ class TellerTransaction extends Model
         'created_at',
     ];
 
-    public function user()
+    public function teller()
     {
         return $this->belongsTo(User::class);
     }

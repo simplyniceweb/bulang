@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Teller;
 
+use App\Enums\Bulang;
 use App\Events\BettingUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
 use App\Models\Ticket;
+use App\Services\TransactionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -18,7 +21,7 @@ class BetController extends Controller
         $request->validate([
             'side' => 'required|in:meron,wala,draw',
             'amount' => 'required|numeric|min:100',
-            'round_id' => 'required|numeric',
+            'round_id' => 'required|exists:rounds,id',
         ]);
 
         $side = $request->input('side');
@@ -31,76 +34,82 @@ class BetController extends Controller
             ], 403);
         }
 
-
         $ticket = DB::transaction(function () use ($event, $roundId, $side, $amount) {
-            // 1. Lock the round and get payout details FIRST
-            $round = Round::where('id', $roundId)->lockForUpdate()->firstOrFail();
+            // Lock the round and get payout details FIRST
+            $round = Round::where('id', $roundId)
+                ->where('event_id', $event->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            // 2. Use cached totals instead of calling SUM() on the tickets table
+            // Use cached totals instead of calling SUM() on the tickets table
             // Ensure you add these columns to your rounds table migration!
-            if ($side === 'meron') {
-                $round->total_meron += $amount;
-            } elseif ($side === 'wala') {
-                $round->total_wala += $amount;
-            } else {
-                $round->total_draw += $amount;
-            }
+            $column = match ($side) {
+                'meron' => 'total_meron',
+                'wala' => 'total_wala',
+                'draw' => 'total_draw',
+            };
 
-            // 3. Calculation logic
-            $housePercent = $round->house_percent ?? $event?->house_percent ?? 6;
-            $plasada = $housePercent / 100;
+            $round->increment($column, $amount);
+            $round->refresh();
+
+            $userId = Auth::id();
+            $divider = (integer) Bulang::DIVIDER->value;
+            $defaultOdds = (float) Bulang::DEFAULTODDS->value;
+            $housePercent = (integer) Bulang::HOUSEPERCENT->value;
+            $drawMultiplier = (float) Bulang::DRAWMULTIPLIER->value;
+
+            // Calculation logic
+            $housePercent = $round->house_percent ?? $event?->house_percent ?? $housePercent;
+            $plasada = $housePercent / $divider;
 
             $totalPool = $round->total_meron + $round->total_wala;
             $netPool = $totalPool * (1 - $plasada);
 
-            // Odds for THIS ticket (Current estimate)
-            if ($side === 'draw') {
-                $ticketOdds = 7.00;
-            } else {
-                $sideTotal = ($side === 'meron') ? $round->total_meron : $round->total_wala;
-                $ticketOdds = ($sideTotal > 0) ? ($netPool / $sideTotal) : 0.94;
-            }
+            // Odds and potential payout for THIS ticket (Current estimate)
+            $oddMeron = ($round->total_meron > 0) ? ($netPool / $round->total_meron) : $defaultOdds;
+            $oddWala = ($round->total_wala > 0) ? ($netPool / $round->total_wala) : $defaultOdds;
+            $ticketOdds = $side === 'draw'
+                ? $drawMultiplier
+                : ($side === 'meron' ? $oddMeron : $oddWala);
 
-            // 4. Create Ticket (One save call)
+            $potentialPayout = $amount * $ticketOdds;
+
+            // Create Ticket (One save call)
             $ticket = Ticket::create([
                 'status'           => 'pending',
                 'event_id'         => $event->id,
                 'round_id'         => $round->id,
-                'teller_id'        => auth()->id(),
+                'teller_id'        => $userId,
                 'side'             => $side,
                 'amount'           => $amount,
                 'odds'             => $ticketOdds,
-                'potential_payout' => $amount * $ticketOdds,
+                'potential_payout' => $potentialPayout,
                 'ticket_number'    => 'PENDING'
             ]);
 
-            // 5. Update Ticket Number and Round Totals/Odds in one go
-            $oddMeron = ($round->total_meron > 0) ? ($netPool / $round->total_meron) * 100 : 0;
-            $oddWala = ($round->total_wala > 0) ? ($netPool / $round->total_wala) * 100 : 0;
-
+            // Update Ticket Number and Round
             $round->update([
-                'total_meron' => $round->total_meron,
-                'total_wala'  => $round->total_wala,
-                'total_draw'  => $round->total_draw,
                 'meron_odds'  => $oddMeron,
                 'wala_odds'   => $oddWala,
             ]);
 
-            $sideOdds = $side === 'meron' ? $oddMeron : $oddWala;
-
-            // 6. Update teller wallet
-            $event->tellers()->updateExistingPivot(auth()->id(), [
-                'current_wallet' => DB::raw("current_wallet + $amount")
+            // Update teller wallet
+            $amount = (float) $amount;
+            $event->tellers()->updateExistingPivot($userId, [
+                'current_wallet' => DB::raw("current_wallet + {$amount}")
             ]);
 
-            $ticket->update([
-                'ticket_number' => "{$event->id}-{$round->id}-{$ticket->id}-" . strtoupper(Str::random(4)),
-                'odds' => $sideOdds,
-                'potential_payout' => $ticket->amount * ($sideOdds / 100),
-            ]);
+            // Update ticket number for uniqueness
+            $ticket->ticket_number = "{$event->id}-{$round->id}-{$ticket->id}-" . strtoupper(Str::random(6));
+            $ticket->save();
+
+            // create transaction
+            app(TransactionService::class)->bet($ticket);
 
             return $ticket;
         });
+
+        broadcast(new BettingUpdated($ticket->round));
 
         return back()->with('newTicket', [
             'ticket_number' => $ticket->ticket_number,
@@ -109,7 +118,7 @@ class BetController extends Controller
             'amount' => number_format($ticket->amount, 2),
             'potential_payout' => number_format($ticket->potential_payout, 2),
             'odds' => $ticket->odds,
-            'teller_name' => auth()->user()->name,
+            'teller_name' => Auth::user()?->name,
             'date' => now()->format('M d, Y h:i A'),
             'message' => "Bet of ₱{$ticket->amount} on {$ticket->side} confirmed.",
         ]);
@@ -120,20 +129,26 @@ class BetController extends Controller
         // block claim if event is halted
         $event = Event::cachedActive();
         if ($event->halt_event) {
-            return response()->json(['message' => 'Event halted for redeclaration of winner.'], 422);
+            return response()->json([
+                'message' => 'Event halted for redeclaration of winner.'
+            ], 422);
         }
 
         // Retrieve ticket with round data
-        $ticket = Ticket::with('round')->where('ticket_number', $ticketNumber)->first();
+        $ticket = Ticket::with('round')
+            ->where('ticket_number', $ticketNumber)
+            ->first();
 
         if (!$ticket) {
-            return response()->json(['message' => 'Ticket Not Found'], 422);
+            return response()->json([
+                'message' => 'Ticket Not Found'
+            ], 422);
         }
 
-        $round = $ticket->round;
         $status = 'pending'; 
         $can_payout = false;
         $payout_amount = 0;
+        $round = $ticket->round;
 
         // 1. Check if already claimed
         if ($ticket->claimed_at) {
@@ -153,13 +168,6 @@ class BetController extends Controller
                 'message' => 'This ticket was already refunded at ' . $ticket->refunded_at->format('Y-m-d h:i A')
             ]);
         }
-
-        $sideOdds = $round->{$ticket->side.'_odds'};
-        $ticket->update([
-            'odds' => $sideOdds,
-            'potential_payout' => $round->status === 'cancelled' ? $ticket->amount : $ticket->amount * ($sideOdds / 100)
-        ]);
-        
 
         // 2. Evaluate based on Round Status
         switch ($round->status) {
@@ -220,18 +228,27 @@ class BetController extends Controller
                 return response()->json(['message' => 'Round is still open'], 422);
             }
 
+            $userId = Auth::id();
+
             // Process Claim
             $ticket->update([
                 'status' => 'paid',
                 'claimed_at' => now(),
-                'paid_by' => auth()->id(), // Track which teller paid this out
+                'paid_by' => $userId, // Track which teller paid this out
             ]);
+
+            $sideOdds = $round->{$ticket->side.'_odds'};
+            $multiplier = (float) Bulang::DRAWMULTIPLIER->value;
+            $divider = (integer) Bulang::DIVIDER->value;
+            $amount = $ticket->side !== 'draw' ? $ticket->amount * ($sideOdds / $divider) : $ticket->amount * $multiplier;
 
             // Update teller wallet
             $event = Event::where('id', Event::cachedActive()->id)->lockForUpdate()->first();
-            $event->tellers()->updateExistingPivot(auth()->id(), [
-                'current_wallet' => DB::raw("current_wallet - $ticket->amount")
+            $event->tellers()->updateExistingPivot($userId, [
+                'current_wallet' => DB::raw('current_wallet - ' . (float)$amount)
             ]);
+
+            app(TransactionService::class)->payout($ticket);
 
             return response()->json([
                 'message' => 'Payout successful!',
@@ -248,24 +265,39 @@ class BetController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-            // 1. Update the bet status
+            // check if ticket does exist
+            if (!$ticket) {
+                return response()->json([
+                    'message' => 'Ticket not found or already claimed'
+                ], 404);
+            }
+
+            // check if ticket already refunded
+            if ($ticket->refunded_at) {
+                return response()->json([
+                    'message' => 'Ticket already refunded'
+                ], 422);
+            }
+
+            // Update ticket
+            $userId = Auth::id();
+            
             $ticket->update([
                 'status' => 'refunded',
                 'refunded_at' => now(),
-                'refunded_by' => auth()->id(),
+                'refunded_by' => $userId,
             ]);
 
-            // 2. Refund the Teller/User Balance (if using a digital wallet)
-            // auth()->user()->increment('balance', $bet->amount);
+            // Update wallet (REFUND = ADD MONEY)
+            $event = Event::where('id', Event::cachedActive()->id)->lockForUpdate()->first();
+            $event->tellers()->updateExistingPivot($userId, [
+                'current_wallet' => DB::raw('current_wallet - ' . (float)$ticket->amount)
+            ]);
 
-            // 3. Trigger Broadcast to update the UI / Odds / Total Bet Pool
+            // Broadcast after success
             broadcast(new BettingUpdated($ticket->round));
 
-            // 4. Update teller wallet
-            $event = Event::where('id', Event::cachedActive()->id)->lockForUpdate()->first();
-            $event->tellers()->updateExistingPivot(auth()->id(), [
-                'current_wallet' => DB::raw("current_wallet - $ticket->amount")
-            ]);
+            app(TransactionService::class)->refund($ticket);
 
             return response()->json([
                 'message' => 'Ticket refunded successfully',

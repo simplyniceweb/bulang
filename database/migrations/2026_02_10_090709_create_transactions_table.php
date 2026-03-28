@@ -11,22 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('teller_transactions', function (Blueprint $table) {
+        Schema::create('transactions', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('user_id')->constrained('users');
+            $table->foreignId('teller_id')->constrained('users');
             $table->foreignId('event_id')->constrained()->cascadeOnDelete();
             $table->foreignId('round_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('ticket_id')->nullable()->constrained()->nullOnDelete();
+            $table->enum('direction', ['in', 'out']);
 
-            $table->enum('type', ['credit', 'bet_in', 'payout', 'adjustment']);
+            $table->enum('type', ['bet', 'claim', 'refund']);
             $table->decimal('amount', 12, 2);
 
             $table->timestamp('created_at')->useCurrent();
 
-            $table->index(['user_id', 'event_id']);
+            $table->index(['teller_id', 'event_id']);
             $table->index('event_id');
             $table->index('ticket_id');
+            $table->unique(['ticket_id', 'type']);
         });
     }
 
@@ -35,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('teller_transactions');
+        Schema::dropIfExists('transactions');
     }
 };
