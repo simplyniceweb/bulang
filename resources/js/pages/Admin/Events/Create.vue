@@ -182,7 +182,7 @@ const addTeller = (event: Event) => {
     const teller = props.availableTellers.find(t => t.id === tellerId);
     
     if (teller && !form.tellers.find(t => t.id === tellerId)) {
-        form.tellers.push({ id: teller.id, name: teller.name, amount: 0 });
+        form.tellers.push({ id: teller.id, name: teller.name, amount: defaultAmount.value  });
     }
     target.value = ""; // Reset select
 };

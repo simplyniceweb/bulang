@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Round;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -72,6 +74,44 @@ class EventController extends Controller
         }
 
         return redirect()->route('admin.events.index')->with('success', 'Event created successfully.');
+    }
+
+    public function show(Event $event, Request $request)
+    {
+        $eventId = $event->id;
+        $event = Event::findOrFail($eventId);
+
+        $rounds = Round::where('event_id', $eventId)
+            ->where('status', 'closed') // ✅ correct enum
+            ->selectRaw("
+                round_number,
+                total_meron,
+                total_wala,
+                house_cut as plasada,
+
+                CASE 
+                    WHEN winner = 'draw' THEN total_draw - (total_draw * 7)
+                    ELSE total_draw
+                END as draw_profit,
+
+                house_cut + 
+                CASE 
+                    WHEN winner = 'draw' THEN total_draw - (total_draw * 7)
+                    ELSE total_draw
+                END as total_round_income
+            ")
+            ->orderBy('round_number')
+            ->get();
+
+        return Inertia::render('Admin/Events/Revenue', [
+            'event' => $event,
+            'breakdown' => $rounds,
+
+            // ✅ Totals computed efficiently from collection
+            'total_revenue' => $rounds->sum('total_round_income'),
+            'total_plasada' => $rounds->sum('plasada'),
+            'total_draw_income' => $rounds->sum('draw_profit'),
+        ]);
     }
 
     public function edit(Event $event)
@@ -144,5 +184,79 @@ class EventController extends Controller
     {
         $event->delete();
         return redirect()->route('admin.events.index')->with('success', 'Event deleted successfully.');
+    }
+
+    public function eventTellerAudit(Event $event)
+    {
+        // 🧾 Round revenue (same as before)
+        $rounds = Round::where('event_id', $event->id)
+            ->where('status', 'closed')
+            ->selectRaw("
+                id,
+                round_number,
+                total_meron,
+                total_wala,
+                total_draw,
+                house_cut as plasada,
+
+                CASE 
+                    WHEN winner = 'draw' THEN total_draw - (total_draw * 7)
+                    ELSE total_draw
+                END as draw_profit,
+
+                house_cut + 
+                CASE 
+                    WHEN winner = 'draw' THEN total_draw - (total_draw * 7)
+                    ELSE total_draw
+                END as total_round_income
+            ")
+            ->orderBy('round_number')
+            ->get();
+
+        // 🧑‍💼 Teller audit per round
+        // $tellerBreakdown = DB::table('tickets')
+        //     ->join('rounds', 'tickets.round_id', '=', 'rounds.id')
+        //     ->where('rounds.event_id', $event->id)
+        //     ->where('rounds.status', 'closed')
+        //     ->selectRaw("
+        //         rounds.round_number,
+        //         tickets.teller_id,
+
+        //         COUNT(tickets.id) as ticket_count,
+
+        //         SUM(CASE WHEN tickets.side = 'meron' THEN amount ELSE 0 END) as meron_total,
+        //         SUM(CASE WHEN tickets.side = 'wala' THEN amount ELSE 0 END) as wala_total,
+        //         SUM(CASE WHEN tickets.side = 'draw' THEN amount ELSE 0 END) as draw_total,
+
+        //         SUM(amount) as total_bet
+        //     ")
+        //     ->groupBy('rounds.round_number', 'tickets.teller_id')
+        //     ->orderBy('rounds.round_number')
+        //     ->get()
+        //     ->groupBy('round_number'); // 👈 group per round for UI
+
+        return Inertia::render('Admin/Events/TellerAudit', [
+            'event' => $event,
+            'rounds' => $rounds,
+            // 'tellerBreakdown' => $tellerBreakdown,
+        ]);
+    }
+
+    public function breakdown($roundId)
+    {
+        $tellers = DB::table('tickets')
+            ->selectRaw("
+                teller_id,
+                COUNT(id) as ticket_count,
+                SUM(CASE WHEN side = 'meron' THEN amount ELSE 0 END) as meron_total,
+                SUM(CASE WHEN side = 'wala' THEN amount ELSE 0 END) as wala_total,
+                SUM(CASE WHEN side = 'draw' THEN amount ELSE 0 END) as draw_total,
+                SUM(amount) as total_bet
+            ")
+            ->where('round_id', $roundId)
+            ->groupBy('teller_id')
+            ->get();
+
+        return response()->json($tellers);
     }
 }

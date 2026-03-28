@@ -133,6 +133,18 @@ const deleteEvent = (id: number) => {
 
                         <!-- Actions -->
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 flex gap-2">
+                        <Link
+                            :href="route('admin.events.teller.audit', event.id)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
+                        >
+                            Audit Teller
+                        </Link>
+                        <Link
+                            :href="route('admin.events.show', event.id)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
+                        >
+                            Show Revenue
+                        </Link>
                         <!-- Edit Button -->
                         <Link
                             v-if="event.status === 'inactive' || event.status === 'active'"

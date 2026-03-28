@@ -63,7 +63,9 @@ Route::middleware(['auth', 'verified', 'admin'])
         })->name('dashboard');
 
         Route::resource('users', UserController::class)->except(['show']);
-        Route::resource('events', EventController::class)->except(['show']);
+        Route::resource('events', EventController::class);
+        Route::get('events/teller-audit/{event}', [EventController::class, 'eventTellerAudit'])->name('events.teller.audit');
+        Route::get('events/teller/{round}/breakdown', [EventController::class, 'breakdown']);
 });
 
 require __DIR__.'/settings.php';
