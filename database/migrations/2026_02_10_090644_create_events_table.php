@@ -20,6 +20,7 @@ return new class extends Migration
             $table->dateTime('ended_at')->nullable();
             $table->boolean('halt_event')->default(false);
             $table->integer('halt_count')->default(0);
+            $table->decimal('supervisor_wallet', 12, 2)->default(0);
             $table->timestamps();
 
             $table->index('status');

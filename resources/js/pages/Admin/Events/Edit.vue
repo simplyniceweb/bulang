@@ -43,6 +43,34 @@
         <p v-if="errors.status" class="text-red-500 text-sm mt-1">{{ errors.status }}</p>
         </div>
 
+        <!-- Supervisor Wallet -->
+        <div class="mt-6 border-t pt-4">
+            <h3 class="text-lg font-medium mb-2 text-indigo-700">Supervisor Configuration</h3>
+            <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                <label class="block text-sm font-semibold text-indigo-900 mb-1">
+                    Supervisor Starting Cash (The "Bag")
+                </label>
+                <div class="relative max-w-xs">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                    <input
+                        type="number"
+                        v-model="form.supervisor_wallet"
+                        step="100"
+                        :disabled="event.status !== 'inactive'"
+                        :class="{'bg-gray-100 cursor-not-allowed text-gray-500 border-gray-200': event.status !== 'inactive'}"
+                        class="w-full pl-7 pr-3 py-2 border border-indigo-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 font-bold text-indigo-700"
+                    />
+                </div>
+                <p v-if="event.status !== 'inactive'" class="text-xs text-amber-600 mt-2 font-medium">
+                    ⚠️ Starting cash cannot be edited once an event is Active or Closed.
+                </p>
+                <p v-else class="text-xs text-indigo-600 mt-2">
+                    This is the total physical cash the Supervisor starts with.
+                </p>
+                <p v-if="errors.supervisor_wallet" class="text-red-500 text-sm mt-1">{{ errors.supervisor_wallet }}</p>
+            </div>
+        </div>
+
         <!-- Wallet -->
         <div class="mt-6 border-t pt-4">
             <h3 class="text-lg font-medium mb-2">Tellers &amp; Wallet amount</h3>
@@ -119,6 +147,7 @@ const form = useForm({
     name: props.event.name,
     house_percent: props.event.house_percent,
     status: props.event.status,
+    supervisor_wallet: props.event.supervisor_wallet,
     // Map existing tellers from props to the form
     tellers: props.event.tellers.map((t: any) => ({
         id: t.id,

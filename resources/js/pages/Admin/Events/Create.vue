@@ -42,6 +42,30 @@
         <p v-if="errors.status" class="text-red-500 text-sm mt-1">{{ errors.status }}</p>
         </div>
 
+        <!-- Supervisor Wallet -->
+        <div class="mt-6 border-t pt-4">
+            <h3 class="text-lg font-medium mb-2 text-indigo-700">Supervisor Configuration</h3>
+            <div class="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                <label class="block text-sm font-semibold text-indigo-900 mb-1">
+                    Supervisor Starting Cash (The "Bag")
+                </label>
+                <div class="relative max-w-xs">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₱</span>
+                    <input
+                        type="number"
+                        v-model="form.supervisor_wallet"
+                        step="100"
+                        class="w-full pl-7 pr-3 py-2 border border-indigo-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 font-bold text-indigo-700"
+                        placeholder="50000"
+                    />
+                </div>
+                <p class="text-xs text-indigo-600 mt-2">
+                    This is the total physical cash the Supervisor starts with to supply Tellers.
+                </p>
+                <p v-if="errors.supervisor_wallet" class="text-red-500 text-sm mt-1">{{ errors.supervisor_wallet }}</p>
+            </div>
+        </div>
+
         <!-- Wallet -->
         <div class="mt-6 border-t pt-4">
             <h3 class="text-lg font-medium mb-2">Tellers &amp; Wallet amount</h3>
@@ -137,6 +161,7 @@ const form = useForm({
     name: '',
     house_percent: 6,
     status: 'inactive',
+    supervisor_wallet: 50000,
     tellers: [] as Array<{ id: number, name: string, amount: number }>
 });
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +45,8 @@ class EventController extends Controller
             'status' => 'required|in:inactive,active,closed',
             'tellers' => 'array',
             'tellers.*.id' => 'exists:users,id',
-            'tellers.*.amount' => 'required|numeric|min:0'
+            'tellers.*.amount' => 'required|numeric|min:0',
+            'supervisor_wallet' => 'required|numeric|min:0'
         ]);
 
         if ($request->status === 'active') {
@@ -59,7 +61,7 @@ class EventController extends Controller
 
         }
 
-        $event = Event::create($request->only('name', 'house_percent', 'status'));
+        $event = Event::create($request->only('name', 'house_percent', 'status', 'supervisor_wallet'));
 
         // Attach tellers with their starting wallets
         if ($request->has('tellers')) {
@@ -140,7 +142,8 @@ class EventController extends Controller
             'status' => 'required|in:inactive,active,closed',
             'tellers' => 'array',
             'tellers.*.id' => 'exists:users,id',
-            'tellers.*.amount' => 'required|numeric'
+            'tellers.*.amount' => 'required|numeric',
+            'supervisor_wallet' => 'required|numeric|min:0'
         ]);
 
         if ($request->status === 'active') {
@@ -236,5 +239,31 @@ class EventController extends Controller
             ->get();
 
         return response()->json($tellers);
+    }
+
+    public function supervisorLedger($eventId)
+    {
+        $event = Event::findOrFail($eventId);
+
+        $transactions = Transaction::where('event_id', $eventId)
+            ->whereIn('type', ['cash_in', 'cash_out'])
+            ->with(['teller:id,name', 'authorizedBy:id,name'])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $totalIn = $transactions->where('type', 'cash_in')->sum('amount');
+        $totalOut = $transactions->where('type', 'cash_out')->sum('amount');
+        $startingHand = $event->supervisor_wallet;
+
+        return Inertia::render('Admin/Events/SupervisorLedger', [
+            'event' => $event,
+            'transactions' => $transactions,
+            'summary' => [
+                'supervisor_hand' => $startingHand - $totalIn + $totalOut,
+                'circulated' => $totalIn - $totalOut,
+                'total_in' => $totalIn,
+                'total_out' => $totalOut,
+            ]
+        ]);
     }
 }

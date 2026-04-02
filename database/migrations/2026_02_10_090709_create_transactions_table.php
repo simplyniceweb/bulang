@@ -20,8 +20,12 @@ return new class extends Migration
             $table->foreignId('ticket_id')->nullable()->constrained()->nullOnDelete();
             $table->enum('direction', ['in', 'out']);
 
-            $table->enum('type', ['bet', 'claim', 'refund']);
+            $table->enum('type', ['bet', 'claim', 'refund', 'cash_in', 'cash_out']);
             $table->decimal('amount', 12, 2);
+            $table->decimal('balance_before', 12, 2)->default(0);
+            $table->decimal('balance_after', 12, 2)->default(0);
+
+            $table->foreignId('authorized_by')->nullable()->constrained('users');
 
             $table->timestamp('created_at')->useCurrent();
 

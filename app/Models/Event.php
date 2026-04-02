@@ -20,6 +20,7 @@ class Event extends Model
         'ended_at',
         'halt_event',
         'halt_count',
+        'supervisor_wallet'
     ];
 
     protected $casts = [

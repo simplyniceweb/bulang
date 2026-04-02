@@ -16,10 +16,12 @@ class EventSeeder extends Seeder
             [
                 'name' => '3 COCK DERBY',
                 'status' => 'inactive',
+                'supervisor_wallet' => 50000
             ],
             [
                 'name' => '3 HITS',
-                'status' => 'active'
+                'status' => 'active',
+                'supervisor_wallet' => 50000
             ]
         ]);
     }

@@ -13,6 +13,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
+import { route } from 'ziggy-js';
 import AppLogo from './AppLogo.vue';
 
 const dashboardLink = route('admin.dashboard') as string;

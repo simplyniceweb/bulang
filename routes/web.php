@@ -7,6 +7,7 @@ use App\Http\Controllers\GameMaster\RoundController;
 use App\Http\Controllers\HomepageController;
 use App\Http\Controllers\Teller\BetController;
 use App\Http\Controllers\Teller\DashboardController as TellerDashboardController;
+use App\Http\Controllers\Teller\TransactionsController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,6 +28,8 @@ Route::middleware(['auth', 'verified', 'teller'])
         Route::get('/bet/{code}/verify', [BetController::class, 'verify'])->name('bet.verify');
         Route::post('/bet/{code}/claim', [BetController::class, 'claim'])->name('bet.claim');
         Route::post('/bet/{code}/refund', [BetController::class, 'refund'])->name('bet.refund');
+
+        Route::post('/transactions/adjust-wallet', [TransactionsController::class, 'adjustWallet'])->name('transactions.adjust-wallet');
 });
 
 Route::middleware(['auth', 'verified', 'game_master'])
@@ -66,6 +69,8 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::resource('events', EventController::class);
         Route::get('events/teller-audit/{event}', [EventController::class, 'eventTellerAudit'])->name('events.teller.audit');
         Route::get('events/teller/{round}/breakdown', [EventController::class, 'breakdown']);
+        Route::get('users/{user}/qr-code', [UserController::class, 'getQrCode'])->name('users.qr-code');
+        Route::get('events/{event}/ledger', [EventController::class, 'supervisorLedger'])->name('events.ledger');
 });
 
 require __DIR__.'/settings.php';

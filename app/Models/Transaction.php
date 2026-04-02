@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Transaction extends Model
 {
@@ -19,6 +20,9 @@ class Transaction extends Model
         'type',
         'amount',
         'created_at',
+        'authorized_by',
+        'balance_before',
+        'balance_after'
     ];
 
     public function teller()
@@ -39,5 +43,10 @@ class Transaction extends Model
     public function ticket()
     {
         return $this->belongsTo(Ticket::class);
+    }
+
+    public function authorizedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'authorized_by');
     }
 }

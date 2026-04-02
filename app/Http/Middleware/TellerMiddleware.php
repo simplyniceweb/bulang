@@ -25,7 +25,9 @@ class TellerMiddleware
         // Role-based redirect if not authorized
         $user = Auth::user();
 
-        if ($user->role !== 'teller') {
+        $allowedRoles = ['teller', 'supervisor'];
+
+        if (!in_array($user->role, $allowedRoles)) {
             switch ($user->role) {
                 case 'game_master':
                     return redirect()->route('game_master.dashboard');
@@ -39,6 +41,10 @@ class TellerMiddleware
         $activeEvent = Event::where('status', 'active')->first();
         if (!$activeEvent) {
             return redirect()->route('teller.unauthorized')->with('error', 'No active event found.');
+        }
+
+        if ($user->role === 'supervisor') {
+            return $next($request);
         }
 
         $isAssigned = $activeEvent->tellers()->where('user_id', $user->id)->exists();

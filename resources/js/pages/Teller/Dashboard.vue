@@ -12,6 +12,7 @@
     import { route } from 'ziggy-js';
     import BetConfirm from './BetConfirm.vue'
     import PayoutTicket from './PayoutTicket.vue'
+    import SupervisorTransaction from './SupervisorTransaction.vue'
     import TicketReceipt from './Ticket.vue'
 
     let echo = null as Echo<any> | null
@@ -27,6 +28,7 @@
         round: any,
         rounds: any[],
         teller: {
+            id: number,
             initial: number,
             current: number
         }
@@ -272,6 +274,8 @@
         }
     };
 
+    const supervisorModal = ref<InstanceType<typeof SupervisorTransaction> | null>(null);
+
     const handleScannerInput = (e: KeyboardEvent) => {
         // Ignore input if a modal is already open or user is typing in an input field
         if (e.target instanceof HTMLInputElement) {
@@ -279,7 +283,9 @@
         }
 
         if (e.key === 'Enter') {
-            if (inputBuffer.value.length > 5) { // Basic check to ensure it's a real code
+            if (inputBuffer.value.startsWith('supervisor_')) {
+                supervisorModal.value?.open(inputBuffer.value);
+            } else if (inputBuffer.value.length > 5) { // Basic check to ensure it's a real code
                 verifyTicket(inputBuffer.value.trim());
             }
             inputBuffer.value = ""; // Clear for next scan
@@ -352,9 +358,21 @@
         echo?.leave('rounds')
         window.removeEventListener('keypress', handleScannerInput)
     })
+
+    const onBalanceUpdated = (newBalance: number) => {
+        tellerWallet.value.current = newBalance;
+    };
 </script>
 
 <template>
+    <SupervisorTransaction 
+        ref="supervisorModal"
+        :current-balance="tellerWallet.current"
+        :event-id="currentRound?.event_id"
+        :teller-id="tellerWallet.id"
+        @updated="onBalanceUpdated"
+    />
+     
     <div style="display: none;">
         <TicketReceipt 
             v-if="currentTicket" 
@@ -533,7 +551,7 @@
         <!-- Profile -->
         <div class="flex justify-between items-center border-b pb-3">
             <div>
-            <p class="font-bold text-lg"><CircleUserRound class="display-inline-block"/>  Jaylord Teller</p>
+            <p class="font-bold text-lg"><CircleUserRound class="display-inline-block"/>  Teller</p>
             <p class="text-sm text-gray-500">Active Session</p>
             </div>
             <button

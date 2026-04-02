@@ -134,6 +134,12 @@ const deleteEvent = (id: number) => {
                         <!-- Actions -->
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 flex gap-2">
                         <Link
+                            :href="route('admin.events.ledger', event.id)"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
+                        >
+                            View Ledger
+                        </Link>
+                        <Link
                             :href="route('admin.events.teller.audit', event.id)"
                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm"
                         >

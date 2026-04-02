@@ -34,6 +34,7 @@ class DashboardController extends Controller
                 'round' => $lastRound,
                 'rounds' => $rounds,
                 'teller' => [
+                    'id' => $tellerData->id,
                     'initial' => $tellerData->pivot->initial_wallet ?? 0,
                     'current' => $tellerData->pivot->current_wallet ?? 0,
                 ]

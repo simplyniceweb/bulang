@@ -37,6 +37,7 @@
           >
             <option value="">Select Role</option>
             <option value="teller">Teller</option>
+            <option value="supervisor">Supervisor</option>
             <option value="game_master">Game Master</option>
             <option value="admin">Administrator</option>
           </select>
@@ -71,6 +72,7 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { route } from 'ziggy-js';
 
 const props = defineProps<{ user: any }>();
 

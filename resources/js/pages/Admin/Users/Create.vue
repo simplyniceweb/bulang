@@ -47,6 +47,7 @@
             class="w-full border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
         >
             <option value="teller">Teller</option>
+            <option value="supervisor">Supervisor</option>
             <option value="game_master">Game Master</option>
             <option value="admin">Administrator</option>
         </select>
@@ -70,6 +71,7 @@ import { useForm } from '@inertiajs/vue3';
 import { Head } from '@inertiajs/vue3';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
+import { route } from 'ziggy-js';
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Users', href: route('admin.users.index') },

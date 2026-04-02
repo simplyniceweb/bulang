@@ -20,6 +20,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'qr_code_key',
         'username',
         'password',
         'role',
@@ -68,5 +69,10 @@ class User extends Authenticatable
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function authorizedTransactions()
+    {
+        return $this->hasMany(Transaction::class, 'authorized_by');
     }
 }
