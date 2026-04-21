@@ -13,21 +13,22 @@ class EventTellerSeeder extends Seeder
      */
     public function run(): void
     {
-        $eventId = 2;
         $startingBalance = 10000.00; // Set your desired initial cash
 
         // Create an array of User IDs from 4 to 23
         $tellerIds = range(4, 23);
 
-        foreach ($tellerIds as $id) {
-            DB::table('event_teller')->insert([
-                'event_id'       => $eventId,
-                'user_id'        => $id,
-                'initial_wallet' => $startingBalance,
-                'current_wallet' => $startingBalance,
-                'created_at'     => now(),
-                'updated_at'     => now(),
-            ]);
+        for ($eventId = 1; $eventId <= 2; $eventId++) {
+            foreach ($tellerIds as $id) {
+                DB::table('event_teller')->insert([
+                    'event_id'       => $eventId,
+                    'user_id'        => $id,
+                    'initial_wallet' => $startingBalance,
+                    'current_wallet' => $startingBalance,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
         }
     }
 }

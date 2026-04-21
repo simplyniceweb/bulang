@@ -71,6 +71,8 @@ Route::middleware(['auth', 'verified', 'admin'])
         Route::get('events/teller/{round}/breakdown', [EventController::class, 'breakdown']);
         Route::get('users/{user}/qr-code', [UserController::class, 'getQrCode'])->name('users.qr-code');
         Route::get('events/{event}/ledger', [EventController::class, 'supervisorLedger'])->name('events.ledger');
+        Route::get('events/{event}/teller', [EventController::class, 'tellerLedger'])->name('events.tellers');
+        Route::get('events/{event}/teller-ledger/{teller}', [EventController::class, 'tellerLedgerDetails'])->name('teller.ledger.details');
 });
 
 require __DIR__.'/settings.php';

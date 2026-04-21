@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
+use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -264,6 +265,156 @@ class EventController extends Controller
                 'total_in' => $totalIn,
                 'total_out' => $totalOut,
             ]
+        ]);
+    }
+
+    public function tellerLedger($eventId)
+    {
+        $event = Event::with('tellers:id,name')->findOrFail($eventId);
+
+        return Inertia::render('Admin/Events/TellerLedger', [
+            'event' => [
+                'id' => $event->id,
+                'name' => $event->name,
+            ],
+            'tellers' => $event->tellers->map(fn ($teller) => [
+                'id' => $teller->id,
+                'name' => $teller->name,
+                'current_wallet' => $teller->pivot->current_wallet,
+                'initial_wallet' => $teller->pivot->initial_wallet,
+            ]),
+        ]);
+    }
+
+    public function tellerLedgerDetails($eventId, $tellerId)
+    {
+        $tickets = Ticket::with('round')
+            ->where('event_id', $eventId)
+            ->where('teller_id', $tellerId)
+            ->orderBy('created_at')
+            ->get();
+
+        $balance = 0;
+
+        // =========================
+        // LEDGER BUILD
+        // =========================
+        $ledger = $tickets->map(function ($ticket) use (&$balance) {
+
+            $isPaid = $ticket->status === 'paid';
+            $isWonUnpaid = $ticket->status === 'won'
+                && $ticket->claimed_at === null
+                && $ticket->refunded_at === null;
+
+            $isLost = $ticket->status === 'lost';
+            $isRefunded = $ticket->status === 'refunded';
+
+            $result = match (true) {
+                $isPaid => 'WIN (PAID)',
+                $isWonUnpaid => 'WIN (UNPAID)',
+                $isLost => 'LOSE',
+                $isRefunded => 'REFUND',
+                default => 'PENDING',
+            };
+
+            // payout exposure (liability only, not cash movement unless paid)
+            $payout = ($isPaid || $isWonUnpaid)
+                ? $ticket->potential_payout
+                : 0;
+
+            // ledger net movement (cash flow perspective)
+            $net = match (true) {
+                $isPaid => -$payout,        // cash out
+                $isLost => $ticket->amount, // house gain
+                $isRefunded => 0,           // neutral (already reversed elsewhere)
+                default => 0,               // pending/won not yet realized
+            };
+
+            $balance += $net;
+
+            return [
+                'time' => $ticket->created_at->format('h:i:s A'),
+                'round' => $ticket->round?->round_number,
+                'ticket_number' => $ticket->ticket_number,
+                'side' => $ticket->side,
+                'amount' => $ticket->amount,
+                'status' => $ticket->status,
+                'result' => $result,
+                'payout' => $payout,
+                'net' => $net,
+                'running_balance' => $balance,
+            ];
+        });
+
+        // =========================
+        // SUMMARY CALCULATION
+        // =========================
+        $totalBet = $tickets->sum('amount');
+
+        $totalPaid = $tickets
+            ->where('status', 'paid')
+            ->sum('potential_payout');
+
+        $totalRefund = $tickets
+            ->where('status', 'refunded')
+            ->sum('amount');
+
+        $unpaidLiability = $tickets
+            ->filter(function ($t) {
+                return $t->status === 'won'
+                    && $t->claimed_at === null
+                    && $t->refunded_at === null;
+            })
+            ->sum('potential_payout');
+
+        // =========================
+        // EXPECTED CASH MODEL
+        // =========================
+        $expectedCash = $totalBet
+            - $totalPaid
+            - $totalRefund
+            - $unpaidLiability;
+
+        // =========================
+        // ACTUAL WALLET
+        // =========================
+        $event = Event::with('tellers')->findOrFail($eventId);
+
+        $pivot = $event->tellers()
+            ->where('user_id', $tellerId)
+            ->first();
+
+        $actualWallet = $pivot?->pivot->current_wallet ?? 0;
+
+        // =========================
+        // VARIANCE
+        // =========================
+        $variance = $actualWallet - $expectedCash;
+
+        $status = match (true) {
+            $variance > 0 => 'OVER',
+            $variance < 0 => 'SHORT',
+            default => 'BALANCED',
+        };
+
+        // =========================
+        // RESPONSE
+        // =========================
+        return response()->json([
+            'ledger' => $ledger,
+
+            'summary' => [
+                'total_bet' => $totalBet,
+                'total_paid' => $totalPaid,
+                'unpaid_liability' => $unpaidLiability,
+                'total_refund' => $totalRefund,
+
+                'expected_cash' => $expectedCash,
+                'actual_wallet' => $actualWallet,
+
+                'variance' => $variance,
+                'status' => $status,
+            ],
         ]);
     }
 }

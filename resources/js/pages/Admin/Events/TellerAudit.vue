@@ -1,7 +1,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
-import { ref } from 'vue'
-import axios from 'axios'
+import axios from 'axios';
+import { ref } from 'vue';
 import { route } from 'ziggy-js';
 
 const props = defineProps({

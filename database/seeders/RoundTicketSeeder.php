@@ -12,15 +12,18 @@ class RoundTicketSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
-            for ($j=1; $j <= 2; $j++) { 
-                $eventId = $j;
+
+            for ($eventId = 1; $eventId <= 2; $eventId++) {
+
                 $now = Carbon::now();
 
                 for ($roundNumber = 1; $roundNumber <= 120; $roundNumber++) {
 
                     $winner = rand(0, 1) ? 'meron' : 'wala';
 
-                    // Create round
+                    // ================================
+                    // CREATE ROUND
+                    // ================================
                     $roundId = DB::table('rounds')->insertGetId([
                         'event_id' => $eventId,
                         'round_number' => $roundNumber,
@@ -46,15 +49,18 @@ class RoundTicketSeeder extends Seeder
 
                     $ticketsData = [];
 
-                    for ($tellerId = 3; $tellerId <= 22; $tellerId++) {
+                    // ================================
+                    // TICKETS GENERATION
+                    // ================================
+                    for ($tellerId = 4; $tellerId <= 23; $tellerId++) {
 
-                        $draw = false;
                         $ticketCount = rand(15, 25);
 
                         for ($i = 0; $i < $ticketCount; $i++) {
 
                             $side = rand(0, 1) ? 'meron' : 'wala';
                             $amount = rand(100, 5000);
+                            $isWin = $side === $winner;
 
                             if ($side === 'meron') {
                                 $totalMeron += $amount;
@@ -62,56 +68,133 @@ class RoundTicketSeeder extends Seeder
                                 $totalWala += $amount;
                             }
 
-                            $ticketsData[] = [
+                            // ================================
+                            // CREATE TICKET
+                            // ================================
+                            $odds = rand(150, 250) / 100;
+
+                            $ticketId = DB::table('tickets')->insertGetId([
                                 'ticket_number' => "{$eventId}-{$roundId}-{$i}-" . strtoupper(Str::random(6)),
-                                'status' => $side === $winner ? 'won' : 'lost',
+                                'status' => $isWin ? 'won' : 'lost',
 
                                 'event_id' => $eventId,
                                 'round_id' => $roundId,
-
                                 'teller_id' => $tellerId,
 
                                 'side' => $side,
                                 'amount' => $amount,
-                                'odds' => 0,
-                                'potential_payout' => 0,
+                                'odds' => $odds,
+                                'potential_payout' => $amount * $odds,
 
                                 'created_at' => now(),
                                 'updated_at' => now(),
-                            ];
+                            ]);
 
-                            if (!$draw) {
-                                $draw = true;
-                                $totalDraw += $amount;
+                            // ================================
+                            // BET TRANSACTION (IN)
+                            // ================================
+                            $wallet = DB::table('event_teller')
+                                ->where('event_id', $eventId)
+                                ->where('user_id', $tellerId)
+                                ->first();
 
-                                $ticketsData[] = [
-                                    'ticket_number' => "{$eventId}-{$roundId}-{($i+1)}-" . strtoupper(Str::random(6)),
+                            $beforeBet = $wallet->current_wallet;
+                            $afterBet = $beforeBet + $amount;
+
+                            DB::table('event_teller')
+                                ->where('event_id', $eventId)
+                                ->where('user_id', $tellerId)
+                                ->update([
+                                    'current_wallet' => $afterBet
+                                ]);
+
+                            DB::table('transactions')->insert([
+                                'teller_id' => $tellerId,
+                                'event_id' => $eventId,
+                                'round_id' => $roundId,
+                                'ticket_id' => $ticketId,
+
+                                'type' => 'bet',
+                                'direction' => 'in',
+                                'amount' => $amount,
+
+                                'balance_before' => $beforeBet,
+                                'balance_after' => $afterBet,
+
+                                'created_at' => now(),
+                            ]);
+
+                            // ================================
+                            // CLAIM TRANSACTION (OUT - WIN ONLY)
+                            // ================================
+                            if ($isWin) {
+
+                                $payout = $amount * 1.9; // mock odds
+
+                                $wallet = DB::table('event_teller')
+                                    ->where('event_id', $eventId)
+                                    ->where('user_id', $tellerId)
+                                    ->first();
+
+                                $beforeClaim = $wallet->current_wallet;
+                                $afterClaim = $beforeClaim - $payout;
+
+                                DB::table('event_teller')
+                                    ->where('event_id', $eventId)
+                                    ->where('user_id', $tellerId)
+                                    ->update([
+                                        'current_wallet' => $afterClaim
+                                    ]);
+
+                                DB::table('transactions')->insert([
+                                    'teller_id' => $tellerId,
+                                    'event_id' => $eventId,
+                                    'round_id' => $roundId,
+                                    'ticket_id' => $ticketId,
+
+                                    'type' => 'claim',
+                                    'direction' => 'out',
+                                    'amount' => $payout,
+
+                                    'balance_before' => $beforeClaim,
+                                    'balance_after' => $afterClaim,
+
+                                    'created_at' => now(),
+                                ]);
+                            }
+
+                            // occasional draw ticket
+                            if (rand(0, 10) === 1) {
+
+                                $drawAmount = rand(100, 1000);
+                                $totalDraw += $drawAmount;
+
+                                DB::table('tickets')->insert([
+                                    'ticket_number' => "{$eventId}-{$roundId}-draw-" . strtoupper(Str::random(6)),
                                     'status' => 'lost',
 
                                     'event_id' => $eventId,
                                     'round_id' => $roundId,
-
                                     'teller_id' => $tellerId,
 
                                     'side' => 'draw',
-                                    'amount' => $amount,
+                                    'amount' => $drawAmount,
                                     'odds' => 0,
                                     'potential_payout' => 0,
 
                                     'created_at' => now(),
                                     'updated_at' => now(),
-                                ];
+                                ]);
                             }
                         }
                     }
-                    
-                    DB::table('tickets')->insert($ticketsData);
 
-                    // Compute house cut (6%)
+                    // ================================
+                    // UPDATE ROUND TOTALS
+                    // ================================
                     $totalPool = $totalMeron + $totalWala;
                     $houseCut = $totalPool * 0.06;
 
-                    // Update round totals
                     DB::table('rounds')->where('id', $roundId)->update([
                         'total_meron' => $totalMeron,
                         'total_wala' => $totalWala,
@@ -121,5 +204,37 @@ class RoundTicketSeeder extends Seeder
                 }
             }
         });
+
+        for ($roundNumber = 1; $roundNumber <= 120; $roundNumber++) {
+            
+            $payoutDetails = DB::table('rounds')->where('id', $roundNumber)->first();
+
+            $totalMeron = $payoutDetails->total_meron;
+            $totalWala = $payoutDetails->total_wala;
+
+            $netPool = ($totalMeron + $totalWala) * 0.94;
+
+            $meronOdds = $totalMeron > 0 ? $netPool / $totalMeron : 0;
+            $walaOdds  = $totalWala > 0 ? $netPool / $totalWala : 0;
+
+            DB::table('tickets')
+            ->where('round_id', $roundNumber)
+            ->update([
+                'odds' => DB::raw("
+                    CASE 
+                        WHEN side = 'meron' THEN {$meronOdds}
+                        WHEN side = 'wala' THEN {$walaOdds}
+                        ELSE 7
+                    END
+                "),
+                'potential_payout' => DB::raw("
+                    amount * CASE 
+                        WHEN side = 'meron' THEN {$meronOdds}
+                        WHEN side = 'wala' THEN {$walaOdds}
+                        ELSE 7
+                    END
+                ")
+            ]);
+        }
     }
 }

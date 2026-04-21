@@ -42,7 +42,7 @@ class Event extends Model
 
     public function transactions()
     {
-        return $this->hasMany(TellerTransaction::class);
+        return $this->hasMany(Transaction::class);
     }
 
     public static function activeOrFail()
