@@ -41,7 +41,7 @@ const roundWinner = computed(() => {
 
             <div class="p-6 space-y-4">
                 <div class="flex items-center justify-between p-3 bg-gray-900 rounded-lg text-white">
-                    <span class="text-lg font-bold text-gray-400">ROUND #{{ ticket.round_id }}</span>
+                    <span class="text-lg font-bold text-gray-400">ROUND #{{ ticket.round?.round_number }}</span>
                     <span :class="ticket.round?.winner === 'meron' ? 'text-red-500' : 'text-blue-400'" class="font-black text-xl">
                         RESULT : {{ roundWinner }}
                     </span>

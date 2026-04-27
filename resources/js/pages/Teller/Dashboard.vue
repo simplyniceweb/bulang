@@ -29,6 +29,7 @@
         rounds: any[],
         teller: {
             id: number,
+            name: string,
             initial: number,
             current: number
         }
@@ -188,6 +189,7 @@
     }
     
     const inputBuffer = ref("")
+    const manualInput = ref("")
     const canClaim = ref(false)
     const currentTicket = ref(null)
     const isVerifying = ref(false)
@@ -276,23 +278,37 @@
 
     const supervisorModal = ref<InstanceType<typeof SupervisorTransaction> | null>(null);
 
+    const processInput = (value: string) => {
+        const cleanValue = value.trim();
+        if (!cleanValue) return;
+
+        if (cleanValue.startsWith('supervisor_')) {
+            supervisorModal.value?.open(cleanValue);
+        } else if (cleanValue.length > 5) {
+            verifyTicket(cleanValue);
+        }
+    };
+
     const handleScannerInput = (e: KeyboardEvent) => {
-        // Ignore input if a modal is already open or user is typing in an input field
-        if (e.target instanceof HTMLInputElement) {
+        // Keep your guard: Ignore if user is manually typing in any input box
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return;
         }
 
         if (e.key === 'Enter') {
-            if (inputBuffer.value.startsWith('supervisor_')) {
-                supervisorModal.value?.open(inputBuffer.value);
-            } else if (inputBuffer.value.length > 5) { // Basic check to ensure it's a real code
-                verifyTicket(inputBuffer.value.trim());
-            }
-            inputBuffer.value = ""; // Clear for next scan
+            processInput(inputBuffer.value);
+            inputBuffer.value = ""; 
         } else {
-            // Barcode scanners are fast; this builds the string character by character
-            inputBuffer.value += e.key;
+            // Prevent control keys (Shift, Alt, etc.) from being added to the buffer
+            if (e.key.length === 1) {
+                inputBuffer.value += e.key;
+            }
         }
+    };
+
+    const handleManualSubmit = () => {
+        processInput(manualInput.value);
+        manualInput.value = ""; // Clear the box after submission
     };
 
     const isProcessingRefund = ref(false)
@@ -551,7 +567,7 @@
         <!-- Profile -->
         <div class="flex justify-between items-center border-b pb-3">
             <div>
-            <p class="font-bold text-lg"><CircleUserRound class="display-inline-block"/>  Teller</p>
+            <p class="font-bold text-lg"><CircleUserRound class="display-inline-block"/>  {{ teller.name }}</p>
             <p class="text-sm text-gray-500">Active Session</p>
             </div>
             <button
@@ -561,6 +577,34 @@
             >
                 Log out
             </button>
+        </div>
+
+        <div class="mt-4 space-y-2 text-sm">
+            <div class="w-full">
+                <div class="flex flex-col space-y-1 w-full">
+                    <label for="ticket-input" class="font-semibold text-gray-700">
+                        Manual Ticket Entry:
+                    </label>
+                    
+                    <div class="flex w-full gap-2">
+                        <input 
+                            id="ticket-input"
+                            v-model="manualInput" 
+                            type="text" 
+                            placeholder="Type Ticket # here..."
+                            @keydown.enter.prevent="handleManualSubmit"
+                            class="flex-1 min-w-0 rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                        />
+                        
+                        <button 
+                            @click="handleManualSubmit" 
+                            class="shrink-0 rounded bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                        >
+                            Verify
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Capital Info -->

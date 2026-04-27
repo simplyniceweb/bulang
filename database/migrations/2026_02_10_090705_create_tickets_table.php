@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('tickets', function (Blueprint $table) {
             $table->id();
-            $table->string('ticket_number', 40)->unique()->index();
+            $table->string('ticket_number', 10)->unique()->index();
             $table->enum('status', ['pending', 'won', 'lost', 'paid', 'refunded'])->default('pending');
 
             $table->foreignId('event_id')->constrained()->cascadeOnDelete();

@@ -43,11 +43,11 @@ class RoundTicketSeeder extends Seeder
                         'updated_at' => now(),
                     ]);
 
+                    $round = DB::table('rounds')->find($roundId);
+
                     $totalMeron = 0;
                     $totalWala = 0;
                     $totalDraw = 0;
-
-                    $ticketsData = [];
 
                     // ================================
                     // TICKETS GENERATION
@@ -56,7 +56,7 @@ class RoundTicketSeeder extends Seeder
 
                         $ticketCount = rand(15, 25);
 
-                        for ($i = 0; $i < $ticketCount; $i++) {
+                        for ($i = 1; $i < $ticketCount; $i++) {
 
                             $side = rand(0, 1) ? 'meron' : 'wala';
                             $amount = rand(100, 5000);
@@ -72,13 +72,14 @@ class RoundTicketSeeder extends Seeder
                             // CREATE TICKET
                             // ================================
                             $odds = rand(150, 250) / 100;
+                            $ticketNumber = $this->generateUniqueTicketNumber();
 
                             $ticketId = DB::table('tickets')->insertGetId([
-                                'ticket_number' => "{$eventId}-{$roundId}-{$i}-" . strtoupper(Str::random(6)),
+                                'ticket_number' => $ticketNumber,
                                 'status' => $isWin ? 'won' : 'lost',
 
                                 'event_id' => $eventId,
-                                'round_id' => $roundId,
+                                'round_id' => $round->round_number,
                                 'teller_id' => $tellerId,
 
                                 'side' => $side,
@@ -162,30 +163,6 @@ class RoundTicketSeeder extends Seeder
                                     'created_at' => now(),
                                 ]);
                             }
-
-                            // occasional draw ticket
-                            if (rand(0, 10) === 1) {
-
-                                $drawAmount = rand(100, 1000);
-                                $totalDraw += $drawAmount;
-
-                                DB::table('tickets')->insert([
-                                    'ticket_number' => "{$eventId}-{$roundId}-draw-" . strtoupper(Str::random(6)),
-                                    'status' => 'lost',
-
-                                    'event_id' => $eventId,
-                                    'round_id' => $roundId,
-                                    'teller_id' => $tellerId,
-
-                                    'side' => 'draw',
-                                    'amount' => $drawAmount,
-                                    'odds' => 0,
-                                    'potential_payout' => 0,
-
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-                            }
                         }
                     }
 
@@ -236,5 +213,27 @@ class RoundTicketSeeder extends Seeder
                 ")
             ]);
         }
+    }
+
+    public function generateUniqueTicketNumber()
+    {
+        $attempts = 0;
+        $maxAttempts = 15;
+
+        while ($attempts < $maxAttempts) {
+            // 1. Generate the 10-digit random number
+            $candidate = str_pad(mt_rand(0, 9999999999), 10, '0', STR_PAD_LEFT);
+
+            // 2. CHECK: Does it exist in the tickets table?
+            $exists = DB::table('tickets')->where('ticket_number', $candidate)->exists();
+
+            if (!$exists) {
+                return $candidate; // It's unique, return it!
+            }
+
+            $attempts++;
+        }
+
+        throw new \Exception("Failed to generate a unique ticket number after $maxAttempts attempts.");
     }
 }

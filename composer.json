@@ -17,6 +17,7 @@
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
         "linkxtr/laravel-qrcode": "*",
+        "milon/barcode": "*",
         "tightenco/ziggy": "*"
     },
     "require-dev": {

@@ -12,7 +12,7 @@ use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Milon\Barcode\DNS1D;
 
 class BetController extends Controller
 {
@@ -84,7 +84,7 @@ class BetController extends Controller
                 'amount'           => $amount,
                 'odds'             => $ticketOdds,
                 'potential_payout' => $potentialPayout,
-                'ticket_number'    => 'PENDING'
+                'ticket_number'    => $this->generateUniqueTicketNumber()
             ]);
 
             // Update Ticket Number and Round
@@ -99,27 +99,28 @@ class BetController extends Controller
                 'current_wallet' => DB::raw("current_wallet + {$amount}")
             ]);
 
-            // Update ticket number for uniqueness
-            $ticket->ticket_number = "{$event->id}-{$round->id}-{$ticket->id}-" . strtoupper(Str::random(6));
-            $ticket->save();
-
             // create transaction
             app(TransactionService::class)->bet($ticket);
+
+            $ticket->round_number = $round->round_number;
 
             return $ticket;
         });
 
         broadcast(new BettingUpdated($ticket->round));
 
+        $d = new DNS1D();
+
         return back()->with('newTicket', [
             'ticket_number' => $ticket->ticket_number,
-            'round_id' => $ticket->round_id,
+            'round_id' => $ticket->round_number,
             'side' => $ticket->side,
             'amount' => number_format($ticket->amount, 2),
             'potential_payout' => number_format($ticket->potential_payout, 2),
             'odds' => $ticket->odds,
             'teller_name' => Auth::user()?->name,
             'date' => now()->format('M d, Y h:i A'),
+            'barcode_html' => $d->getBarcodeSVG($ticket->ticket_number, 'C128', 1.4, 45),
             'message' => "Bet of ₱{$ticket->amount} on {$ticket->side} confirmed.",
         ]);
     }
@@ -304,5 +305,27 @@ class BetController extends Controller
                 'ticket' => $ticket,
             ]);
         });
+    }
+
+    public function generateUniqueTicketNumber()
+    {
+        $attempts = 0;
+        $maxAttempts = 15;
+
+        while ($attempts < $maxAttempts) {
+            // 1. Generate the 10-digit random number
+            $candidate = str_pad(mt_rand(0, 9999999999), 10, '0', STR_PAD_LEFT);
+
+            // 2. CHECK: Does it exist in the tickets table?
+            $exists = DB::table('tickets')->where('ticket_number', $candidate)->exists();
+
+            if (!$exists) {
+                return $candidate; // It's unique, return it!
+            }
+
+            $attempts++;
+        }
+
+        throw new \Exception("Failed to generate a unique ticket number after $maxAttempts attempts.");
     }
 }
