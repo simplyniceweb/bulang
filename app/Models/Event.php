@@ -81,7 +81,7 @@ class Event extends Model
     public function tellers()
     {
         return $this->belongsToMany(User::class, 'event_teller')
-                    ->withPivot('initial_wallet', 'current_wallet')
+                    ->withPivot(['initial_wallet', 'current_wallet'])
                     ->withTimestamps();
     }
 }

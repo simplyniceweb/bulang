@@ -27,6 +27,7 @@
         event: any
         round: any,
         rounds: any[],
+        tickets: any[],
         teller: {
             id: number,
             name: string,
@@ -46,8 +47,16 @@
         draw_closed: boolean
     }
 
+    interface Ticket {
+        id: number
+        ticket_number: string
+        amount: number
+        status: string
+    }
+
     const currentRound = ref<Round | null>(props.round)
     const rounds = ref<Round[]>([...props.rounds])
+    const tickets = ref<Ticket[]>([...props.tickets])
     const tellerWallet = ref(props.teller);
     const meronClosed = computed(() => currentRound.value?.meron_closed ?? false)
     const walaClosed = computed(() => currentRound.value?.wala_closed ?? false)
@@ -191,7 +200,7 @@
     const inputBuffer = ref("")
     const manualInput = ref("")
     const canClaim = ref(false)
-    const currentTicket = ref(null)
+    const currentTicket = ref<any>(null)
     const isVerifying = ref(false)
     const isSubmitting = ref(false)
     const scannedTicket = ref(null as string | null)
@@ -221,6 +230,7 @@
                 onSuccess: () => {
                     const newTicket = (usePage().props.flash as Record<string, any>).newTicket;
                     if (newTicket) {
+                        tickets.value.unshift(newTicket);
                         currentTicket.value = newTicket
                         nextTick(() => {
                             ticketComp.value?.printReceipt()
@@ -378,6 +388,32 @@
     const onBalanceUpdated = (newBalance: number) => {
         tellerWallet.value.current = newBalance;
     };
+
+    const handleRefundAction = (ticketNumber: string) => {
+        manualInput.value = ticketNumber;
+        
+        // We use nextTick to ensure the v-model update is processed
+        // before we fire the submission logic
+        nextTick(() => {
+            handleManualSubmit();
+        });
+    };
+
+    const handleReprintAction = (ticket: any) => {
+        // 1. Set the ticket to the one clicked (3rd one, etc.)
+        currentTicket.value = ticket;
+
+        // 2. Wait for the key-change to re-render the component
+        nextTick(() => {
+            if (ticketComp.value) {
+                ticketComp.value.printReceipt();
+            } else {
+                // If v-if and key are still processing, a tiny timeout 
+                // can act as a fallback, though nextTick usually suffices.
+                setTimeout(() => ticketComp.value?.printReceipt(), 50);
+            }
+        });
+    };
 </script>
 
 <template>
@@ -392,6 +428,7 @@
     <div style="display: none;">
         <TicketReceipt 
             v-if="currentTicket" 
+            :key="currentTicket.id"
             ref="ticketComp" 
             :ticket="currentTicket" 
         />
@@ -666,6 +703,33 @@
                 <span>Total</span>
                 <span>₱ {{ formatNumber(sumStats.meron_total + sumStats.wala_total + sumStats.draw_total) }}</span>
             </div>
+        </div>
+
+        <!-- Recent Bets -->
+        <div class="mt-6 border-t pt-4"><p class="font-semibold mb-3">Recent Bets <span class="float-right">Winner</span></p></div>
+        <div class="flex-1 overflow-y-auto max-h-96">
+            <ul class="space-y-2 text-sm">
+                <li v-for="ticket in tickets" :key="ticket.id" class="flex justify-between bg-gray-50 p-2 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <span class="font-mono font-medium">{{ ticket.ticket_number }}</span>
+                        <span :class="{
+                            'text-green-600': ticket.status === 'won',
+                            'text-red-500': ticket.status === 'lost',
+                            'text-gray-500': ticket.status === 'pending'
+                        }" class="font-bold ms-2">
+                            {{ ticket.status.toUpperCase() }}
+                        </span>
+                    </div>
+                    <div class="flex gap-2 mt-2 border-t pt-2" v-if="ticket.status === 'pending'">
+                        <button 
+                            @click="handleReprintAction(ticket)"
+                            class="flex-1 bg-blue-100 text-blue-700 p-2 cursor-pointer rounded text-xs font-bold hover:bg-blue-200 transition-colors"
+                        >
+                            REPRINT
+                        </button>
+                    </div>
+                </li>
+            </ul>
         </div>
 
         <!-- Logs -->

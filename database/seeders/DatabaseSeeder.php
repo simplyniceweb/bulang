@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Database\Seeders\EventSeeder;
 use Database\Seeders\EventTellerSeeder;
-use Database\Seeders\RoundTicketSeeder;
 use Database\Seeders\UserSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -22,7 +21,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             EventSeeder::class,
             EventTellerSeeder::class,
-            RoundTicketSeeder::class,
+            // RoundTicketSeeder::class,
         ]);
     }
 }

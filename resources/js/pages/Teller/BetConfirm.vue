@@ -13,7 +13,7 @@ interface Props {
   visible: boolean
   amount: number
   side: 'meron' | 'wala' | 'draw'
-  remainingBalance: number,
+  remainingBalance: number | string,
   loading?: boolean
 }
 

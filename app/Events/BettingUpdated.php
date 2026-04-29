@@ -44,7 +44,7 @@ class BettingUpdated implements ShouldBroadcastNow
     {
         return [
             'round' => $this->round->id,
-            'payouts'  => $this->round->payout_details
+            'payouts'  => $this->round->payout_details,
         ];
     }
 }

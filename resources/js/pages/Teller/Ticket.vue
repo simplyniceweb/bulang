@@ -96,7 +96,7 @@ defineExpose({ printReceipt });
 
         <div class="item-row">
             <span style="flex: 1; text-align: left;">#{{ ticket.round_id }}</span>
-            <span style="flex: 1; text-align: center; font-weight: bold;">{{ ticket.side.toUpperCase() }}</span>
+            <span style="flex: 1; text-align: center; font-weight: bold;">{{ ticket.side?.toUpperCase() }}</span>
             <span style="flex: 1; text-align: right;">{{ ticket.amount }}</span>
         </div>
 

@@ -53,9 +53,9 @@ class BetController extends Controller
             $round->refresh();
 
             $userId = Auth::id();
-            $divider = (integer) Bulang::DIVIDER->value;
+            $divider = (int) Bulang::DIVIDER->value;
             $defaultOdds = (float) Bulang::DEFAULTODDS->value;
-            $housePercent = (integer) Bulang::HOUSEPERCENT->value;
+            $housePercent = (int) Bulang::HOUSEPERCENT->value;
             $drawMultiplier = (float) Bulang::DRAWMULTIPLIER->value;
 
             // Calculation logic
@@ -116,6 +116,7 @@ class BetController extends Controller
             'round_id' => $ticket->round_number,
             'side' => $ticket->side,
             'amount' => number_format($ticket->amount, 2),
+            'status' => $ticket->status,
             'potential_payout' => number_format($ticket->potential_payout, 2),
             'odds' => $ticket->odds,
             'teller_name' => Auth::user()?->name,
@@ -125,7 +126,7 @@ class BetController extends Controller
         ]);
     }
 
-    public function verify($ticketNumber)
+    public function verify(?string $ticketNumber)
     {
         // block claim if event is halted
         $event = Event::cachedActive();
@@ -179,6 +180,7 @@ class BetController extends Controller
                 break;
 
             case 'closed':
+                dd($round->winner, $ticket->side);
                 if ($round->winner === $ticket->side) {
                     $status = 'winner';
                     $can_payout = true;
@@ -206,7 +208,7 @@ class BetController extends Controller
         ]);
     }
 
-    public function claim($ticketNumber)
+    public function claim(?string $ticketNumber)
     {
         return DB::transaction(function () use ($ticketNumber) {
             // Lock the ticket row for update to prevent race conditions
@@ -258,7 +260,7 @@ class BetController extends Controller
         });
     }
 
-    public function refund($ticketNumber)
+    public function refund(?string $ticketNumber)
     {
         return DB::transaction(function () use ($ticketNumber) {
             $ticket = Ticket::where('ticket_number', $ticketNumber)

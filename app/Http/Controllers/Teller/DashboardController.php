@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Teller;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Round;
+use App\Models\Ticket;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -21,10 +22,17 @@ class DashboardController extends Controller
                 ->latest('round_number')
                 ->first();
 
+            $tickets = Ticket::select('id', 'ticket_number', 'amount', 'status')
+                        ->where('teller_id', auth()->id())
+                        ->where('event_id', $event->id)
+                        ->latest('created_at')
+                        ->take(40)
+                        ->get();
+
             $rounds = Round::select('id', 'event_id', 'round_number', 'winner', 'status')
                         ->where('event_id', $event->id)
                         ->latest('round_number')
-                        ->take(20)
+                        ->take(5)
                         ->get();
 
             $tellerData = $event->tellers()->where('user_id', auth()->id())->first();
@@ -33,6 +41,7 @@ class DashboardController extends Controller
                 'event' => $event,
                 'round' => $lastRound,
                 'rounds' => $rounds,
+                'tickets' => $tickets,
                 'teller' => [
                     'id' => $tellerData->id,
                     'name' => $tellerData->name,
