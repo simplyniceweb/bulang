@@ -26,7 +26,7 @@ class DashboardController extends Controller
                         ->where('teller_id', auth()->id())
                         ->where('event_id', $event->id)
                         ->latest('created_at')
-                        ->take(40)
+                        ->take(50)
                         ->get();
 
             $rounds = Round::select('id', 'event_id', 'round_number', 'winner', 'status')

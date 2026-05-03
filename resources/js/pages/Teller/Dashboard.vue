@@ -181,7 +181,11 @@
         })
     }
 
-    function placeBet(selectedSide: Side) {
+    function placeBet(selectedSide: Side, event: Event) {
+        console.log('place bet');
+        if (event.target instanceof HTMLButtonElement) {
+            event.target.blur();
+        }
 
         if (roundStatus.value !== 'open') {
             addToast('Betting is currently closed', 'error')
@@ -201,22 +205,25 @@
     const manualInput = ref("")
     const canClaim = ref(false)
     const currentTicket = ref<any>(null)
+    const reprintTicket = ref<any>(null)
     const isVerifying = ref(false)
     const isSubmitting = ref(false)
     const scannedTicket = ref(null as string | null)
     const scannedStatus = ref(null as string | null)
     const ticketComp = ref<InstanceType<typeof TicketReceipt> | null>(null)
+    const reprintTicketComp = ref<InstanceType<typeof TicketReceipt> | null>(null)
 
-    function confirmBet() {
+    const confirmBet = () => {
+        console.log('confirm bet');
 
-        if (isSubmitting.value) return
+        if (isSubmitting.value) return;
+        isSubmitting.value = true;
 
         if (betAmount.value <= 0) {
             addToast('Enter a valid bet amount.', 'error')
             return
         }
 
-        isSubmitting.value = true
         tellerWallet.value.current = Number(tellerWallet.value.current) + betAmount.value
 
         router.post(
@@ -229,27 +236,25 @@
             {
                 onSuccess: () => {
                     const newTicket = (usePage().props.flash as Record<string, any>).newTicket;
+
                     if (newTicket) {
-                        tickets.value.unshift(newTicket);
+                        console.log('handle print action');
                         currentTicket.value = newTicket
                         nextTick(() => {
+                            showConfirm.value = false
                             ticketComp.value?.printReceipt()
                         })
                         addToast('Bet confirmed and printing...', 'success')
                     } else {
                         addToast('Bet placed but failed to retrieve ticket for printing.', 'error')
                     }
-
-                    betAmount.value = 0
-                    showConfirm.value = false
-                    isSubmitting.value = false
                 },
                 onError: () => {
                     addToast('Failed to place bet. Please try again.', 'error')
                     tellerWallet.value.current = Number(tellerWallet.value.current) - betAmount.value
-                    isSubmitting.value = false
                 },
                 onFinish: () => {
+                    betAmount.value = 0
                     isSubmitting.value = false
                 }
             }
@@ -300,14 +305,17 @@
     };
 
     const handleScannerInput = (e: KeyboardEvent) => {
+        console.log('handle scanner input');
         // Keep your guard: Ignore if user is manually typing in any input box
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return;
         }
 
         if (e.key === 'Enter') {
-            processInput(inputBuffer.value);
-            inputBuffer.value = ""; 
+            if (inputBuffer.value.trim().length > 0) {
+                processInput(inputBuffer.value);
+            }
+            inputBuffer.value = "";
         } else {
             // Prevent control keys (Shift, Alt, etc.) from being added to the buffer
             if (e.key.length === 1) {
@@ -376,6 +384,7 @@
 
     // 4. Lifecycle Hooks
     onMounted(() => {
+        console.log('Initializing Echo...')
         initializeEcho()
         window.addEventListener('keypress', handleScannerInput)
     })
@@ -391,7 +400,12 @@
 
     const isFetching = ref(false);
 
-    const handleReprintAction = async (ticketSummary: any) => {
+    const handleReprintAction = async (ticketSummary: any, event: Event) => {
+        console.log('handle reprint action');
+        if (event.target instanceof HTMLButtonElement) {
+            event.target.blur();
+        }
+
         if (isFetching.value) return;
 
         try {
@@ -401,13 +415,14 @@
             const response = await axios.get(`/teller/bet/tickets/${ticketSummary.id}`);
             
             // 2. Assign the full data to the reactive variable
-            currentTicket.value = response.data;
+            reprintTicket.value = response.data;
 
             // 3. Wait for DOM update and trigger print
             await nextTick();
             
-            if (ticketComp.value) {
-                ticketComp.value.printReceipt();
+            if (reprintTicketComp.value) {
+                showConfirm.value = false
+                reprintTicketComp.value.printReceipt();
             }
         } catch (error) {
             console.error("Failed to fetch ticket details:", error);
@@ -430,9 +445,16 @@
     <div style="display: none;">
         <TicketReceipt 
             v-if="currentTicket" 
-            :key="currentTicket.id"
             ref="ticketComp" 
+            :key="'bet-' + currentTicket.ticket_number"
             :ticket="currentTicket" 
+        />
+
+        <TicketReceipt 
+            v-if="reprintTicket" 
+            ref="reprintTicketComp" 
+            :key="'reprint-' + reprintTicket.ticket_number"
+            :ticket="reprintTicket" 
         />
 
         <PayoutTicket 
@@ -531,7 +553,7 @@
             <div class="grid grid-cols-3 gap-4 mt-4">
 
             <button
-                @click="placeBet('wala')"
+                @click="placeBet('wala', $event)"
                 :disabled="walaClosed"
                 :class="[
                     'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
@@ -549,7 +571,7 @@
             </button>
 
             <button
-                @click="placeBet('draw')"
+                @click="placeBet('draw', $event)"
                 :disabled="drawClosed"
                 :class="[
                     'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
@@ -568,7 +590,7 @@
             </button>
 
             <button
-                @click="placeBet('meron')"
+                @click="placeBet('meron', $event)"
                 :disabled="meronClosed"
                 :class="[
                     'text-white py-4 md:py-6 text-xl font-extrabold rounded-2xl shadow-lg transition transform duration-150 w-full',
@@ -724,7 +746,7 @@
                     </div>
                     <div class="flex gap-2 mt-2 border-t pt-2" v-if="ticket.status === 'pending'">
                         <button 
-                            @click="handleReprintAction(ticket)"
+                            @click="handleReprintAction(ticket, $event)"
                             class="flex-1 bg-blue-100 text-blue-700 p-2 cursor-pointer rounded text-xs font-bold hover:bg-blue-200 transition-colors"
                         >
                             REPRINT

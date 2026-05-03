@@ -16,6 +16,10 @@ class TicketObserver
 
     public function saved(Ticket $ticket): void
     {
+        if (!$ticket->wasChanged('status') && !$ticket->wasRecentlyCreated) {
+            return;
+        }
+        
         // 'saved' fires after BOTH created and updated
         $round = $ticket->round;
         if ($round) {

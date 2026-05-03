@@ -30,36 +30,62 @@ const printReceipt = () => {
                 <title>TKT-${props.ticket.ticket_number}</title>
                 <meta charset="UTF-8">
                 <style>
-                    @page { size: 58mm auto; margin: 0mm; }
+                    /* FORCE REMOVE ALL BROWSER MARGINS */
+                    @page { 
+                        size: 58mm auto; 
+                        margin: 0 !important; 
+                        padding-right: 20px !important;
+                    }
+                    html, body { 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        width: 100%;
+                    }
                     body { 
-                        margin: 0; padding: 0; width: 58mm; 
                         font-family: 'Arial', sans-serif;
                         text-align: center;
                         color: #000;
+                        /* Centers content horizontally if the window is wider than paper */
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
                     }
-                    .receipt { width: 58mm; padding: 2mm; box-sizing: border-box; }
+
+                    /* The actual printable area */
+                    .receipt { 
+                        width: 58mm; 
+                        margin: 0 auto;
+                        box-sizing: border-box;
+                    }
                     
                     /* Visual Dividers */
-                    .hr-thick { border-bottom: 2px solid black; margin: 4px 0; }
-                    .hr-dashed { border-bottom: 1px dashed black; margin: 6px 0; }
+                    .hr-thick { border-bottom: 2px solid black; margin: 4px 0; width: 100%; }
+                    .hr-dashed { border-bottom: 1px dashed black; margin: 6px 0; width: 100%; }
 
-                    /* Typography Scale */
+                    /* Typography */
                     .font-huge { font-size: 28px; line-height: 1.1; font-weight: bold; }
                     .font-large { font-size: 20px; line-height: 1.2; font-weight: bold; }
                     .font-mid { font-size: 16px; font-weight: bold; }
                     .font-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
 
-                    /* Side Highlight (Inverted) */
-                    .side-box {  
+                    .side-box { 
                         color: #000; 
                         padding: 4px; 
                         margin: 4px 0;
-                        font-size: 30px;
+                        font-size: 32px; /* Made slightly bigger */
                         font-weight: bold;
                     }
 
-                    .barcode-container { margin: 5px 0; width: 100%; }
-                    .barcode-container svg { max-width: 100%; height: auto; }
+                    .barcode-container { 
+                        margin: 5px 0; 
+                        width: 100%; 
+                        display: flex; 
+                        justify-content: center; 
+                    }
+                    .barcode-container svg { 
+                        max-width: 100%; /* Prevents clipping on the edges */
+                        height: auto; 
+                    }
                 </style>
             </head>
             <body>

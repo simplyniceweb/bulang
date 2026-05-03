@@ -107,7 +107,7 @@ class BetController extends Controller
             return $ticket;
         });
 
-        broadcast(new BettingUpdated($ticket->round));
+        // broadcast(new BettingUpdated($ticket->round));
 
         $d = new DNS1D();
 
@@ -121,7 +121,7 @@ class BetController extends Controller
             'odds' => $ticket->odds,
             'teller_name' => Auth::user()?->name,
             'date' => now()->format('M d, Y h:i A'),
-            'barcode_html' => $d->getBarcodeSVG($ticket->ticket_number, 'C128', 1.4, 45),
+            'barcode_html' => $d->getBarcodeSVG($ticket->ticket_number, 'C128', 2, 45),
             'message' => "Bet of ₱{$ticket->amount} on {$ticket->side} confirmed.",
         ]);
     }
@@ -350,7 +350,7 @@ class BetController extends Controller
             'odds'             => $ticket->odds,
             'teller_name'      => $ticket->teller->name, // Assuming a relationship exists
             'date'             => $ticket->created_at->format('Y-m-d H:i:s'),
-            'barcode_html' => $d->getBarcodeSVG($ticket->ticket_number, 'C128', 1.4, 45),
+            'barcode_html' => $d->getBarcodeSVG($ticket->ticket_number, 'C128', 2, 45),
         ]);
     }
 }

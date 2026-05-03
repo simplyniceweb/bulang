@@ -35,7 +35,17 @@ const sideClass = computed(() => {
   return ''
 })
 
-const confirm = () => emit('confirm')
+const confirm = (event: Event) => {
+    console.log('CONFIRM CLICKED');
+
+    if (event.target instanceof HTMLButtonElement) {
+        event.target.blur();
+    }
+
+    if (props.loading) return;
+
+    emit('confirm');
+}
 const cancel = () => {
   if (props.loading) return
   emit('cancel')
@@ -103,9 +113,13 @@ const cancel = () => {
         </button>
 
         <button
-          @click="confirm"
-          :disabled="loading"
-          class="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition"
+        type="button"
+        @click.once="confirm($event)"
+        :disabled="loading"
+        :class="[
+            'flex-1 py-3 rounded-xl font-bold transition',
+            loading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+        ]"
         >
             <span v-if="loading" class="animate-spin">⏳</span>
             {{ loading ? 'Processing...' : 'Confirm' }}
