@@ -2,7 +2,7 @@
     import { router } from '@inertiajs/vue3'
     import Echo from 'laravel-echo'
     import { CircleUserRound } from 'lucide-vue-next'
-    import { ref, watch, onMounted, onUnmounted } from 'vue'
+    import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
     import AlertModal from '@/components/AlertModal.vue'
     import ConfirmModal from '@/components/ConfirmModal.vue'
     import StaticAlertModal from '@/components/StaticAlertModal.vue'
@@ -17,6 +17,8 @@
     const confirmMessage = ref('')
     const confirmAction = ref<() => void>(() => {})
     const confirmType = ref('default')
+    const declaredWinner = ref<"wala" | "meron" | "draw" | null>(null);
+    const isBlinking = computed(() => declaredWinner.value !== null);
 
     const { showAlert } = useAlert()
 
@@ -157,6 +159,8 @@
     function confirmWinner(side: 'wala' | 'meron' | 'draw') {
         if (!requireRound()) return
 
+        if (isBlinking.value) return;
+
         confirmAndPost(
             `Declare winner: ${side.toUpperCase()}?`,
             'game_master.round.declare',
@@ -164,6 +168,12 @@
             'success',
             side
         )
+
+        declaredWinner.value = side;
+
+        setTimeout(() => {
+            declaredWinner.value = null;
+        }, 10000); 
     }
 
     function askLogout() {
@@ -280,26 +290,43 @@
                 <h3 class="font-bold text-gray-700 uppercase text-sm tracking-wider">Declare Result</h3>
                 <div class="flex flex-col gap-3">
                     <button
-                    @click="confirmWinner('wala')"
-                    class="w-full py-3 rounded-lg text-white font-semibold transition bg-indigo-600 hover:bg-indigo-700"
+                        @click="confirmWinner('wala')"
+                        :disabled="isBlinking"
+                        :class="[
+                            'w-full py-3 rounded-lg text-white font-semibold transition bg-indigo-600 hover:bg-indigo-700',
+                            declaredWinner === 'wala' ? 'active-blink ring-4 ring-indigo-300' : (isBlinking ? 'opacity-50' : '')
+                        ]"
                     >
-                    WINNER WALA
+                        WINNER WALA
                     </button>
 
                     <button
-                    @click="confirmWinner('meron')"
-                    class="w-full py-3 rounded-lg text-white font-semibold transition bg-red-600 hover:bg-red-700"
+                        @click="confirmWinner('meron')"
+                        :disabled="isBlinking"
+                        :class="[
+                            'w-full py-3 rounded-lg text-white font-semibold transition bg-red-600 hover:bg-red-700',
+                            declaredWinner === 'meron' ? 'active-blink ring-4 ring-red-300' : (isBlinking ? 'opacity-50' : '')
+                        ]"
                     >
-                    WINNER MERON
+                        WINNER MERON
                     </button>
 
                     <button
-                    @click="confirmWinner('draw')"
-                    class="w-full py-3 rounded-lg text-white font-semibold transition bg-yellow-600 hover:bg-yellow-700"
+                        @click="confirmWinner('draw')"
+                        :disabled="isBlinking"
+                        :class="[
+                            'w-full py-3 rounded-lg text-white font-semibold transition bg-yellow-600 hover:bg-yellow-700',
+                            declaredWinner === 'draw' ? 'active-blink ring-4 ring-yellow-300' : (isBlinking ? 'opacity-50' : '')
+                        ]"
                     >
-                    WINNER DRAW
+                        WINNER DRAW
                     </button>
                 </div>
+
+                <!-- Optional: Status message -->
+                <p v-if="isBlinking" class="text-center text-xs mt-2 font-bold animate-pulse text-gray-500">
+                    WINNER DECLARED: PROCESSING...
+                </p>
 
                 <div class="mt-4 bg-gray-50 p-4 rounded-xl grid grid-cols-3 text-center font-bold">
                     <div class="text-indigo-600 text-sm">
@@ -440,3 +467,14 @@
 
     </div>
 </template>
+
+<style scoped>
+.active-blink {
+    animation: blink-bg 1s step-start infinite;
+}
+
+@keyframes blink-bg {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+</style>

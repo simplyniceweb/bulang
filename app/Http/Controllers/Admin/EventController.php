@@ -335,6 +335,7 @@ class EventController extends Controller
             return [
                 'time' => $ticket->created_at->format('h:i:s A'),
                 'round' => $ticket->round?->round_number,
+                'winner' => $ticket->round?->winner,
                 'ticket_number' => $ticket->ticket_number,
                 'side' => $ticket->side,
                 'amount' => $ticket->amount,

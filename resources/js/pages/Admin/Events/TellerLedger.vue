@@ -174,8 +174,9 @@ const resultClass = (result) => {
                     <th class="p-3 text-center">Round</th>
                     <th class="p-3 text-left">Ticket</th>
                     <th class="p-3 text-center">Side</th>
-                    <th class="p-3 text-right">Amount</th>
+                    <th class="p-3 text-center">Winner</th>
                     <th class="p-3 text-center">Status</th>
+                    <th class="p-3 text-right">Amount</th>
                     <th class="p-3 text-right">Net</th>
                     <th class="p-3 text-right">Balance</th>
                 </tr>
@@ -203,8 +204,13 @@ const resultClass = (result) => {
                     {{ row.side }}
                     </td>
 
-                    <td class="p-3 text-right">
-                    {{ formatMoney(row.amount) }}
+                    <td class="p-3 text-center uppercase text-xs font-bold tracking-wider"
+                        :class="{
+                        'text-green-400': row.winner === row.side,
+                        'text-red-400':   row.winner && row.winner !== row.side,
+                        'text-gray-500':  !row.winner
+                        }">
+                    {{ row.winner ?? '—' }}
                     </td>
 
                     <!-- STATUS -->
@@ -215,6 +221,10 @@ const resultClass = (result) => {
                     >
                         {{ row.result }}
                     </span>
+                    </td>
+
+                    <td class="p-3 text-right">
+                    {{ formatMoney(row.amount) }}
                     </td>
 
                     <!-- NET -->
