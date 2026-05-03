@@ -64,10 +64,15 @@ const roundWinner = computed(() => {
                     <p class="text-xs text-green-700 font-bold uppercase tracking-widest">
                         {{ status === 'cancelled' ? 'Refund Amount' : 'Potential Payout' }}
                     </p>
-                    <p class="text-5xl font-black text-green-900 mt-1">
+                    <p class="text-3xl font-black text-green-900 mt-1">
                         ₱{{ status === 'cancelled' ? formatNumber(ticket.amount) : formatNumber(ticket.potential_payout) }}
                     </p>
-                    <p class="text-sm text-green-600 mt-2 font-medium">ODDS: {{ ticket.odds }} <br> BET AMOUNT: ₱{{ formatNumber(ticket.amount) }}</p>
+                    <p class="text-green-600 mt-2 font-bold">
+                        ODDS: <br><span class="text-3xl">{{ ticket.odds }}</span> 
+                        <br> 
+                        <br>
+                        BET AMOUNT: <br> <span class="text-3xl">₱{{ formatNumber(ticket.amount) }}</span>
+                    </p>
                 </div>
 
                 <div class="flex gap-3 mt-6">

@@ -389,30 +389,32 @@
         tellerWallet.value.current = newBalance;
     };
 
-    const handleRefundAction = (ticketNumber: string) => {
-        manualInput.value = ticketNumber;
-        
-        // We use nextTick to ensure the v-model update is processed
-        // before we fire the submission logic
-        nextTick(() => {
-            handleManualSubmit();
-        });
-    };
+    const isFetching = ref(false);
 
-    const handleReprintAction = (ticket: any) => {
-        // 1. Set the ticket to the one clicked (3rd one, etc.)
-        currentTicket.value = ticket;
+    const handleReprintAction = async (ticketSummary: any) => {
+        if (isFetching.value) return;
 
-        // 2. Wait for the key-change to re-render the component
-        nextTick(() => {
+        try {
+            isFetching.value = true;
+
+            // 1. Fetch the full details from the server
+            const response = await axios.get(`/teller/bet/tickets/${ticketSummary.id}`);
+            
+            // 2. Assign the full data to the reactive variable
+            currentTicket.value = response.data;
+
+            // 3. Wait for DOM update and trigger print
+            await nextTick();
+            
             if (ticketComp.value) {
                 ticketComp.value.printReceipt();
-            } else {
-                // If v-if and key are still processing, a tiny timeout 
-                // can act as a fallback, though nextTick usually suffices.
-                setTimeout(() => ticketComp.value?.printReceipt(), 50);
             }
-        });
+        } catch (error) {
+            console.error("Failed to fetch ticket details:", error);
+            alert("Could not load ticket data for reprinting.");
+        } finally {
+            isFetching.value = false;
+        }
     };
 </script>
 

@@ -28,6 +28,7 @@ Route::middleware(['auth', 'verified', 'teller'])
         Route::get('/bet/{code}/verify', [BetController::class, 'verify'])->name('bet.verify');
         Route::post('/bet/{code}/claim', [BetController::class, 'claim'])->name('bet.claim');
         Route::post('/bet/{code}/refund', [BetController::class, 'refund'])->name('bet.refund');
+        Route::get('/bet/tickets/{ticket}', [BetController::class, 'reprint'])->name('bet.reprint');
 
         Route::post('/transactions/adjust-wallet', [TransactionsController::class, 'adjustWallet'])->name('transactions.adjust-wallet');
 });

@@ -38,7 +38,7 @@ export default defineConfig({
             origin: '*', // Allow all origins during development
         },
         hmr: {
-            host: '192.168.254.110',
+            host: '192.168.254.111',
         },
     },
 });

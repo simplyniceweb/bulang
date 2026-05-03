@@ -330,4 +330,27 @@ class BetController extends Controller
 
         throw new \Exception("Failed to generate a unique ticket number after $maxAttempts attempts.");
     }
+
+    public function reprint(Ticket $ticket) 
+    {
+        // Ensure the teller can only access their own tickets for safety
+        if ($ticket->teller_id !== auth()->id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $d = new DNS1D();
+
+        // Return all fields required by the Ticket interface in your Vue component
+        return response()->json([
+            'ticket_number'    => $ticket->ticket_number,
+            'round_id'         => $ticket->round_id,
+            'side'             => $ticket->side,
+            'amount'           => $ticket->amount,
+            'potential_payout' => $ticket->potential_payout,
+            'odds'             => $ticket->odds,
+            'teller_name'      => $ticket->teller->name, // Assuming a relationship exists
+            'date'             => $ticket->created_at->format('Y-m-d H:i:s'),
+            'barcode_html' => $d->getBarcodeSVG($ticket->ticket_number, 'C128', 1.4, 45),
+        ]);
+    }
 }
