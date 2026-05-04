@@ -730,7 +730,7 @@
         </div>
 
         <!-- Recent Bets -->
-        <div class="mt-6 border-t pt-4"><p class="font-semibold mb-3">Recent Bets <span class="float-right">Winner</span></p></div>
+        <div class="mt-6 border-t pt-4"><p class="font-semibold mb-3">Recent Bets <span class="float-right">Ticket Status</span></p></div>
         <div class="flex-1 overflow-y-auto max-h-96">
             <ul class="space-y-2 text-sm">
                 <li v-for="ticket in tickets" :key="ticket.id" class="flex justify-between bg-gray-50 p-2 rounded-lg">
@@ -742,6 +742,14 @@
                             'text-gray-500': ticket.status === 'pending'
                         }" class="font-bold ms-2">
                             {{ ticket.status.toUpperCase() }}
+                        </span>
+                        <span class="font-mono font-medium ms-2">
+                        (₱ {{ 
+                            Number(ticket.amount).toLocaleString('en-US', { 
+                                minimumFractionDigits: 2, 
+                                maximumFractionDigits: 2 
+                            })
+                        }})
                         </span>
                     </div>
                     <div class="flex gap-2 mt-2 border-t pt-2" v-if="ticket.status === 'pending'">

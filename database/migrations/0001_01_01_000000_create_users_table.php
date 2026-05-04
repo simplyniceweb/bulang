@@ -20,6 +20,8 @@ return new class extends Migration
             $table->rememberToken();
             $table->enum('role', ['admin', 'game_master', 'supervisor', 'teller']);
             $table->enum('status', ['active', 'suspended'])->default('active');
+            $table->string('session_id')->nullable();
+            $table->timestamp('last_activity')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

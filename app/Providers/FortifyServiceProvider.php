@@ -7,13 +7,13 @@ use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Laravel\Fortify\Fortify;
-use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Hash;
 use App\Actions\Fortify\CreateNewUser;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -36,10 +36,22 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('username', $request->username)->first();
-
-            if ($user && Hash::check($request->password, $user->password)) {
-                return $user;
+            
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return null;
             }
+
+            if (
+                $user->session_id &&
+                $user->last_activity &&
+                now()->diffInMinutes($user->last_activity) < config('session.lifetime')
+            ) {
+                throw ValidationException::withMessages([
+                    'username' => 'This account is already being used on another device.'
+                ]);
+            }
+
+            return $user;
         });
     }
 

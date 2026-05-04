@@ -25,7 +25,9 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
-        'wallet'
+        'wallet',
+        'session_id',
+        'last_activity',
     ];
 
     /**

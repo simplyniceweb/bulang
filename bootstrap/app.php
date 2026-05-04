@@ -5,6 +5,8 @@ use App\Http\Middleware\GameMasterMiddleware;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\TellerMiddleware;
+use App\Http\Middleware\TrackUserSession;
+use App\Providers\EventServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             AuthenticateSession::class,
+            TrackUserSession::class,
         ]);
 
         $middleware->alias([
@@ -37,4 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
-    })->create();
+    })
+    ->withProviders([
+        EventServiceProvider::class,
+    ])
+    ->create();
